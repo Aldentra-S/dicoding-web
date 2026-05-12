@@ -61,17 +61,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-if (process.env.NODE_ENV !== 'production') {
-  const startServer = async () => {
+const startServer = async () => {
+  try {
     await testConnection();
-    app.listen(PORT, () => {
-      console.log(`Smart Finance API running on http://localhost:${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Smart Finance API running on port ${PORT}`);
     });
-  };
-  startServer();
-} else {
-  testConnection();
-}
+  } catch (error) {
+    console.error('Gagal menyalakan server:', error);
+  }
+};
+
+startServer();
 
 export default app;
