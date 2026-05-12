@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.jsx';
 import hideIcon from '../assets/hide.png';
@@ -14,6 +14,11 @@ export default function Auth() {
   const [rf, setRf] = useState({ name: '', email: '', password: '' });
   const navigate = useNavigate();
   const { login, register } = useApp();
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) navigate('/dashboard');
+  }, []);
 
   const doLogin = async (e) => {
     e.preventDefault();
