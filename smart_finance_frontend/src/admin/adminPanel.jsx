@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 const API =
   (import.meta.env.VITE_API_URL ||
-    'VITE_API_URL=https://dicoding-web-pkdy.vercel.app/admin') + '/admin';
+    'VITE_API_URL=https://dicoding-web-pkdy.vercel.app') + '/admin';
 
 function apiFetch(path, tok, opts = {}) {
   return fetch(API + path, {
