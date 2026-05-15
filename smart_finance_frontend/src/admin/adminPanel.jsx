@@ -2,9 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const API =
-  (import.meta.env.VITE_API_URL ||
-    'VITE_API_URL=https://dicoding-web-production.up.railway.app/api') +
-  '/admin';
+  (import.meta.env.VITE_API_URL || 'http://localhost:3000/api') + '/admin';
 
 function apiFetch(path, tok, opts = {}) {
   return fetch(API + path, {
