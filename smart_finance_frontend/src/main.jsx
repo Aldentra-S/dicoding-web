@@ -9,7 +9,7 @@ import ConsultationList from './consultation/consultationList.jsx';
 import BookingConsultation from './consultation/bookingConsultation.jsx';
 import Education from './education/educationPage.jsx';
 import Profile from './profile/userProfile.jsx';
-import AdminPanel from './admin/AdminPanel.jsx';
+import AdminPanel from './admin/adminPanel.jsx';
 import './index.css';
 
 const Guard = ({ children }) => {
