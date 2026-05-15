@@ -58,6 +58,7 @@ const StatusBadge = ({ b }) => {
         fontWeight: 700,
         borderRadius: 6,
         padding: '3px 8px',
+        whiteSpace: 'nowrap',
       }}
     >
       {lbl}
@@ -208,6 +209,67 @@ const Btn = ({
   );
 };
 
+const responsiveStyles = `
+  @media (max-width: 768px) {
+    .admin-sidebar {
+      transform: translateX(-100%) !important;
+      transition: transform 0.25s ease !important;
+      z-index: 400 !important;
+    }
+    .admin-sidebar.open {
+      transform: translateX(0) !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+    }
+    .admin-main {
+      margin-left: 0 !important;
+    }
+    .admin-burger {
+      display: flex !important;
+    }
+    .admin-overlay {
+      display: block !important;
+    }
+  }
+  .admin-burger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 9px;
+    cursor: pointer;
+    color: var(--ink);
+    flex-shrink: 0;
+  }
+  .admin-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 399;
+  }
+  .users-table-wrap {
+    width: 100%;
+  }
+  .users-table-wrap table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  .health-table-wrap {
+    width: 100%;
+  }
+  .health-table-wrap table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  @media (max-width: 900px) {
+    .bookings-table-wrap {
+      overflow-x: auto;
+    }
+  }
+`;
+
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [tok, setTok] = useState(
@@ -222,6 +284,7 @@ export default function AdminPanel() {
   });
   const [loginErr, setLoginErr] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [page, setPage] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -622,6 +685,8 @@ export default function AdminPanel() {
         background: 'var(--paper)',
       }}
     >
+      <style>{responsiveStyles}</style>
+
       {toast && (
         <div
           style={{
@@ -644,7 +709,16 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {sidebarOpen && (
+        <div
+          className="admin-overlay"
+          onClick={() => setSidebarOpen(false)}
+          style={{ display: 'block' }}
+        />
+      )}
+
       <aside
+        className={`admin-sidebar${sidebarOpen ? ' open' : ''}`}
         style={{
           width: 220,
           background: 'var(--ink)',
@@ -653,6 +727,7 @@ export default function AdminPanel() {
           display: 'flex',
           flexDirection: 'column',
           zIndex: 300,
+          transition: 'transform 0.25s ease',
         }}
       >
         <div
@@ -723,7 +798,10 @@ export default function AdminPanel() {
           {NAV.map((item) => (
             <button
               key={item.id}
-              onClick={() => setPage(item.id)}
+              onClick={() => {
+                setPage(item.id);
+                setSidebarOpen(false);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -799,34 +877,56 @@ export default function AdminPanel() {
         </div>
       </aside>
 
-      <div style={{ marginLeft: 220, flex: 1, padding: 24 }}>
+      <div
+        className="admin-main"
+        style={{ marginLeft: 220, flex: 1, minWidth: 0 }}
+      >
         <div
           style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 200,
+            background: 'var(--paper)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            marginBottom: 22,
+            padding: '12px 24px',
+            gap: 12,
           }}
         >
-          <div>
-            <h1
-              style={{
-                fontSize: 20,
-                fontWeight: 700,
-                color: 'var(--ink)',
-                margin: 0,
-              }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              className="admin-burger"
+              onClick={() => setSidebarOpen((v) => !v)}
+              aria-label="Menu"
             >
-              {NAV.find((n) => n.id === page)?.label}
-            </h1>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
-              {new Date().toLocaleDateString('id-ID', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </p>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <rect y="2" width="18" height="2" rx="1" fill="currentColor" />
+                <rect y="8" width="18" height="2" rx="1" fill="currentColor" />
+                <rect y="14" width="18" height="2" rx="1" fill="currentColor" />
+              </svg>
+            </button>
+            <div>
+              <h1
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: 'var(--ink)',
+                  margin: 0,
+                }}
+              >
+                {NAV.find((n) => n.id === page)?.label}
+              </h1>
+              <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                {new Date().toLocaleDateString('id-ID', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
           </div>
           <button
             onClick={fetchAll}
@@ -841,621 +941,659 @@ export default function AdminPanel() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
+              flexShrink: 0,
             }}
           >
             {loading ? '...' : '🔄 Refresh'}
           </button>
         </div>
 
-        {page === 'dashboard' && (
-          <>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))',
-                gap: 14,
-                marginBottom: 20,
-              }}
-            >
-              {[
-                [
-                  '👥',
-                  'Total Pengguna',
-                  stats.total_users ?? '—',
-                  'Terdaftar',
-                  'var(--ink)',
-                ],
-                [
-                  '📅',
-                  'Total Booking',
-                  stats.total_bookings ?? '—',
-                  `${activeBookingCount} aktif`,
-                  'var(--ink)',
-                ],
-                [
-                  '🧑‍💼',
-                  'Konsultan',
-                  stats.total_consultants ?? '—',
-                  'Aktif',
-                  'var(--ink)',
-                ],
-                [
-                  '💚',
-                  'Health Checks',
-                  stats.total_health_checks ?? '—',
-                  'Dilakukan',
-                  'var(--ink)',
-                ],
-                [
-                  '💰',
-                  'Revenue',
-                  rp(computedRevenue),
-                  `${paidCompletedCount} sesi selesai`,
-                  'var(--green-2)',
-                ],
-                [
-                  '⏳',
-                  'Booking Pending',
-                  stats.pending ?? pendingCount,
-                  'Perlu konfirmasi',
-                  '#d97706',
-                ],
-              ].map(([ic, lbl, val, sub, col]) => (
+        <div style={{ padding: 24 }}>
+          {page === 'dashboard' && (
+            <>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill,minmax(190px,1fr))',
+                  gap: 14,
+                  marginBottom: 20,
+                }}
+              >
+                {[
+                  [
+                    '👥',
+                    'Total Pengguna',
+                    stats.total_users ?? '—',
+                    'Terdaftar',
+                    'var(--ink)',
+                  ],
+                  [
+                    '📅',
+                    'Total Booking',
+                    stats.total_bookings ?? '—',
+                    `${activeBookingCount} aktif`,
+                    'var(--ink)',
+                  ],
+                  [
+                    '🧑‍💼',
+                    'Konsultan',
+                    stats.total_consultants ?? '—',
+                    'Aktif',
+                    'var(--ink)',
+                  ],
+                  [
+                    '💚',
+                    'Health Checks',
+                    stats.total_health_checks ?? '—',
+                    'Dilakukan',
+                    'var(--ink)',
+                  ],
+                  [
+                    '💰',
+                    'Revenue',
+                    rp(computedRevenue),
+                    `${paidCompletedCount} sesi selesai`,
+                    'var(--green-2)',
+                  ],
+                  [
+                    '⏳',
+                    'Booking Pending',
+                    stats.pending ?? pendingCount,
+                    'Perlu konfirmasi',
+                    '#d97706',
+                  ],
+                ].map(([ic, lbl, val, sub, col]) => (
+                  <div
+                    key={lbl}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid var(--border)',
+                      borderRadius: 12,
+                      padding: '16px 18px',
+                      display: 'flex',
+                      gap: 12,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 10,
+                        background: 'var(--green-mist)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 18,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {ic}
+                    </div>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: 'var(--muted)',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          marginBottom: 2,
+                        }}
+                      >
+                        {lbl}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: "'Montserrat',sans-serif",
+                          fontSize: 20,
+                          fontWeight: 700,
+                          color: col,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {val}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--muted)',
+                          marginTop: 1,
+                        }}
+                      >
+                        {sub}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))',
+                  gap: 14,
+                }}
+              >
                 <div
-                  key={lbl}
                   style={{
                     background: '#fff',
                     border: '1px solid var(--border)',
                     borderRadius: 12,
-                    padding: '16px 18px',
-                    display: 'flex',
-                    gap: 12,
-                    alignItems: 'center',
+                    padding: '18px 20px',
                   }}
                 >
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
-                      background: 'var(--green-mist)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 18,
-                      flexShrink: 0,
-                    }}
+                  <h3
+                    style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}
                   >
-                    {ic}
-                  </div>
-                  <div>
+                    Booking Terbaru
+                  </h3>
+                  {bookings.slice(0, 6).map((b, i) => (
                     <div
+                      key={i}
                       style={{
-                        fontSize: 10,
-                        color: 'var(--muted)',
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        marginBottom: 2,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 0',
+                        borderBottom: '1px solid var(--border)',
+                        fontSize: 12,
+                        gap: 8,
                       }}
                     >
-                      {lbl}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "'Montserrat',sans-serif",
-                        fontSize: 20,
-                        fontWeight: 700,
-                        color: col,
-                        lineHeight: 1,
-                      }}
-                    >
-                      {val}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: 'var(--muted)',
-                        marginTop: 1,
-                      }}
-                    >
-                      {sub}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 14,
-              }}
-            >
-              <div
-                style={{
-                  background: '#fff',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '18px 20px',
-                }}
-              >
-                <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>
-                  Booking Terbaru
-                </h3>
-                {bookings.slice(0, 6).map((b, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 0',
-                      borderBottom: '1px solid var(--border)',
-                      fontSize: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600 }}>
-                        {b.user_name || `User #${b.user_id}`}
-                      </div>
-                      <div style={{ color: 'var(--muted)', fontSize: 11 }}>
-                        {b.booking_date} {b.booking_time} — {b.consultant_name}
-                      </div>
-                    </div>
-                    <StatusBadge b={b} />
-                  </div>
-                ))}
-                {bookings.length === 0 && (
-                  <p style={{ fontSize: 12, color: 'var(--muted)' }}>
-                    Belum ada booking.
-                  </p>
-                )}
-              </div>
-              <div
-                style={{
-                  background: '#fff',
-                  border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '18px 20px',
-                }}
-              >
-                <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}>
-                  Distribusi Status Booking
-                </h3>
-                {BK_STATUS.map((s) => {
-                  const count = bookings.filter(
-                    (b) => resolveStatus(b) === s,
-                  ).length;
-                  const pct = bookings.length
-                    ? Math.round((count / bookings.length) * 100)
-                    : 0;
-                  const [, col] = BK_COLORS[s] || ['#f3f4f6', '#374151'];
-                  return (
-                    <div key={s} style={{ marginBottom: 12 }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          fontSize: 12,
-                          marginBottom: 4,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}
-                        >
-                          {s}
-                        </span>
-                        <span style={{ color: 'var(--muted)' }}>
-                          {count} ({pct}%)
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          height: 6,
-                          background: 'var(--border)',
-                          borderRadius: 3,
-                          overflow: 'hidden',
-                        }}
-                      >
+                      <div style={{ minWidth: 0 }}>
                         <div
                           style={{
-                            height: '100%',
-                            width: `${pct}%`,
-                            background: col,
-                            borderRadius: 3,
-                            transition: 'width 0.6s ease',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
-
-        {page === 'users' && (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              <span style={{ fontWeight: 700, fontSize: 14 }}>
-                Pengguna ({filteredUsers.length})
-              </span>
-              <input
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Cari nama / email..."
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '7px 12px',
-                  fontSize: 12,
-                  outline: 'none',
-                  width: 220,
-                }}
-              />
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: 12,
-                }}
-              >
-                <thead style={{ background: 'var(--paper)' }}>
-                  <tr>
-                    {[
-                      'ID',
-                      'Nama',
-                      'Email',
-                      'Telepon',
-                      'Booking',
-                      'Health Checks',
-                      'Bergabung',
-                      'Aksi',
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          padding: '10px 14px',
-                          textAlign: 'left',
-                          fontWeight: 700,
-                          color: 'var(--muted)',
-                          fontSize: 10,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((u) => (
-                    <tr
-                      key={u.id}
-                      style={{ borderTop: '1px solid var(--border)' }}
-                    >
-                      <td
-                        style={{ padding: '10px 14px', color: 'var(--muted)' }}
-                      >
-                        #{u.id}
-                      </td>
-                      <td style={{ padding: '10px 14px', fontWeight: 600 }}>
-                        {u.name}
-                      </td>
-                      <td
-                        style={{ padding: '10px 14px', color: 'var(--muted)' }}
-                      >
-                        {u.email}
-                      </td>
-                      <td
-                        style={{ padding: '10px 14px', color: 'var(--muted)' }}
-                      >
-                        {u.phone || '—'}
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span
-                          style={{
-                            background: 'var(--blue-lt)',
-                            color: 'var(--blue)',
-                            borderRadius: 6,
-                            padding: '2px 7px',
-                            fontWeight: 700,
-                            fontSize: 11,
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {u.total_bookings}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span
-                          style={{
-                            background: 'var(--green-mist)',
-                            color: 'var(--green-2)',
-                            borderRadius: 6,
-                            padding: '2px 7px',
-                            fontWeight: 700,
-                            fontSize: 11,
-                          }}
-                        >
-                          {u.total_health_checks}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: '10px 14px',
-                          color: 'var(--muted)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {u.created_at
-                          ? new Date(u.created_at).toLocaleDateString('id-ID')
-                          : '—'}
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button
-                            onClick={() => openModal('editUser', { ...u })}
-                            style={{
-                              background: 'var(--ink)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: 6,
-                              padding: '4px 10px',
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() =>
-                              setDelConfirm({
-                                type: 'user',
-                                id: u.id,
-                                name: u.name,
-                              })
-                            }
-                            style={{
-                              background: '#fee2e2',
-                              color: '#b91c1c',
-                              border: '1px solid #fca5a5',
-                              borderRadius: 6,
-                              padding: '4px 10px',
-                              fontSize: 11,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Hapus
-                          </button>
+                          {b.user_name || `User #${b.user_id}`}
                         </div>
-                      </td>
-                    </tr>
+                        <div style={{ color: 'var(--muted)', fontSize: 11 }}>
+                          {b.booking_date} {b.booking_time} —{' '}
+                          {b.consultant_name}
+                        </div>
+                      </div>
+                      <StatusBadge b={b} />
+                    </div>
                   ))}
-                </tbody>
-              </table>
-              {filteredUsers.length === 0 && (
+                  {bookings.length === 0 && (
+                    <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                      Belum ada booking.
+                    </p>
+                  )}
+                </div>
                 <div
                   style={{
-                    padding: 32,
-                    textAlign: 'center',
-                    color: 'var(--muted)',
-                    fontSize: 13,
+                    background: '#fff',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    padding: '18px 20px',
                   }}
                 >
-                  Tidak ada pengguna ditemukan.
+                  <h3
+                    style={{ fontSize: 14, fontWeight: 700, marginBottom: 14 }}
+                  >
+                    Distribusi Status Booking
+                  </h3>
+                  {BK_STATUS.map((s) => {
+                    const count = bookings.filter(
+                      (b) => resolveStatus(b) === s,
+                    ).length;
+                    const pct = bookings.length
+                      ? Math.round((count / bookings.length) * 100)
+                      : 0;
+                    const [, col] = BK_COLORS[s] || ['#f3f4f6', '#374151'];
+                    return (
+                      <div key={s} style={{ marginBottom: 12 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontSize: 12,
+                            marginBottom: 4,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontWeight: 600,
+                              textTransform: 'capitalize',
+                            }}
+                          >
+                            {s}
+                          </span>
+                          <span style={{ color: 'var(--muted)' }}>
+                            {count} ({pct}%)
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            height: 6,
+                            background: 'var(--border)',
+                            borderRadius: 3,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              height: '100%',
+                              width: `${pct}%`,
+                              background: col,
+                              borderRadius: 3,
+                              transition: 'width 0.6s ease',
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
+              </div>
+            </>
+          )}
 
-        {page === 'bookings' && (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              overflow: 'hidden',
-            }}
-          >
+          {page === 'users' && (
             <div
               style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-                flexWrap: 'wrap',
+                background: '#fff',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                overflow: 'hidden',
               }}
             >
-              <span style={{ fontWeight: 700, fontSize: 14 }}>
-                Semua Booking ({visibleBookings.length})
-              </span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <select
-                  value={bkFilter}
-                  onChange={(e) => setBkFilter(e.target.value)}
+              <div
+                style={{
+                  padding: '14px 18px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: 14 }}>
+                  Pengguna ({filteredUsers.length})
+                </span>
+                <input
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Cari nama / email..."
                   style={{
                     border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: '7px 12px',
                     fontSize: 12,
                     outline: 'none',
+                    width: 220,
+                    maxWidth: '100%',
+                  }}
+                />
+              </div>
+              <div className="users-table-wrap">
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 12,
+                    tableLayout: 'fixed',
                   }}
                 >
-                  <option value="">Semua Status</option>
-                  {BK_STATUS.map((s) => (
-                    <option
-                      key={s}
-                      value={s}
-                      style={{ textTransform: 'capitalize' }}
-                    >
-                      {BK_COLORS[s]?.[2] || s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: 12,
-                }}
-              >
-                <thead style={{ background: 'var(--paper)' }}>
-                  <tr>
-                    {[
-                      'ID',
-                      'Pengguna',
-                      'Konsultan',
-                      'Tanggal',
-                      'Waktu',
-                      'Metode',
-                      'Total Fee',
-                      'Status',
-                      'Aksi',
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          padding: '10px 14px',
-                          textAlign: 'left',
-                          fontWeight: 700,
-                          color: 'var(--muted)',
-                          fontSize: 10,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleBookings.map((b) => {
-                    const expired = isExpired(b);
-                    return (
+                  <colgroup>
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '14%' }} />
+                    <col style={{ width: '9%' }} />
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '8%' }} />
+                  </colgroup>
+                  <thead style={{ background: 'var(--paper)' }}>
+                    <tr>
+                      {[
+                        'ID',
+                        'Nama',
+                        'Email',
+                        'Telepon',
+                        'Booking',
+                        'Health',
+                        'Bergabung',
+                        'Aksi',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: '10px 10px',
+                            textAlign: 'left',
+                            fontWeight: 700,
+                            color: 'var(--muted)',
+                            fontSize: 10,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((u) => (
                       <tr
-                        key={b.id}
+                        key={u.id}
                         style={{ borderTop: '1px solid var(--border)' }}
                       >
                         <td
                           style={{
-                            padding: '10px 14px',
+                            padding: '10px 10px',
                             color: 'var(--muted)',
                           }}
                         >
-                          #{b.id}
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <div style={{ fontWeight: 600 }}>
-                            {b.user_name || `User #${b.user_id}`}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                            {b.user_email}
-                          </div>
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <div style={{ fontWeight: 600 }}>
-                            {b.consultant_name}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                            {b.specialization}
-                          </div>
+                          #{u.id}
                         </td>
                         <td
-                          style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}
+                          style={{
+                            padding: '10px 10px',
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
                         >
-                          {b.booking_date}
+                          {u.name}
                         </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          {b.booking_time}
+                        <td
+                          style={{
+                            padding: '10px 10px',
+                            color: 'var(--muted)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {u.email}
                         </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          {b.consultation_method === 'video_meeting'
-                            ? '📹 Video'
-                            : '💬 Chat'}
+                        <td
+                          style={{
+                            padding: '10px 10px',
+                            color: 'var(--muted)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {u.phone || '—'}
                         </td>
-                        <td style={{ padding: '10px 14px', fontWeight: 700 }}>
-                          {rp(b.total_fee)}
+                        <td style={{ padding: '10px 10px' }}>
+                          <span
+                            style={{
+                              background: 'var(--blue-lt)',
+                              color: 'var(--blue)',
+                              borderRadius: 6,
+                              padding: '2px 7px',
+                              fontWeight: 700,
+                              fontSize: 11,
+                            }}
+                          >
+                            {u.total_bookings}
+                          </span>
                         </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <StatusBadge b={b} />
+                        <td style={{ padding: '10px 10px' }}>
+                          <span
+                            style={{
+                              background: 'var(--green-mist)',
+                              color: 'var(--green-2)',
+                              borderRadius: 6,
+                              padding: '2px 7px',
+                              fontWeight: 700,
+                              fontSize: 11,
+                            }}
+                          >
+                            {u.total_health_checks}
+                          </span>
                         </td>
-                        <td style={{ padding: '10px 14px' }}>
+                        <td
+                          style={{
+                            padding: '10px 10px',
+                            color: 'var(--muted)',
+                            fontSize: 11,
+                          }}
+                        >
+                          {u.created_at
+                            ? new Date(u.created_at).toLocaleDateString('id-ID')
+                            : '—'}
+                        </td>
+                        <td style={{ padding: '10px 10px' }}>
                           <div
                             style={{
                               display: 'flex',
-                              gap: 5,
+                              gap: 4,
                               flexWrap: 'wrap',
                             }}
                           >
-                            {!expired && (
-                              <button
-                                onClick={() =>
-                                  openModal('editBooking', { ...b })
-                                }
-                                style={{
-                                  background: 'var(--ink)',
-                                  color: '#fff',
-                                  border: 'none',
-                                  borderRadius: 6,
-                                  padding: '4px 10px',
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Edit
-                              </button>
-                            )}
-                            {b.consultation_method === 'video_meeting' &&
-                              !expired && (
+                            <button
+                              onClick={() => openModal('editUser', { ...u })}
+                              style={{
+                                background: 'var(--ink)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '4px 8px',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() =>
+                                setDelConfirm({
+                                  type: 'user',
+                                  id: u.id,
+                                  name: u.name,
+                                })
+                              }
+                              style={{
+                                background: '#fee2e2',
+                                color: '#b91c1c',
+                                border: '1px solid #fca5a5',
+                                borderRadius: 6,
+                                padding: '4px 8px',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredUsers.length === 0 && (
+                  <div
+                    style={{
+                      padding: 32,
+                      textAlign: 'center',
+                      color: 'var(--muted)',
+                      fontSize: 13,
+                    }}
+                  >
+                    Tidak ada pengguna ditemukan.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {page === 'bookings' && (
+            <div
+              style={{
+                background: '#fff',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  padding: '14px 18px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <span style={{ fontWeight: 700, fontSize: 14 }}>
+                  Semua Booking ({visibleBookings.length})
+                </span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <select
+                    value={bkFilter}
+                    onChange={(e) => setBkFilter(e.target.value)}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '7px 12px',
+                      fontSize: 12,
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="">Semua Status</option>
+                    {BK_STATUS.map((s) => (
+                      <option key={s} value={s}>
+                        {BK_COLORS[s]?.[2] || s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div
+                className="bookings-table-wrap"
+                style={{ overflowX: 'auto' }}
+              >
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 12,
+                    minWidth: 700,
+                  }}
+                >
+                  <thead style={{ background: 'var(--paper)' }}>
+                    <tr>
+                      {[
+                        'ID',
+                        'Pengguna',
+                        'Konsultan',
+                        'Tanggal',
+                        'Waktu',
+                        'Metode',
+                        'Total Fee',
+                        'Status',
+                        'Aksi',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: '10px 14px',
+                            textAlign: 'left',
+                            fontWeight: 700,
+                            color: 'var(--muted)',
+                            fontSize: 10,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleBookings.map((b) => {
+                      const expired = isExpired(b);
+                      return (
+                        <tr
+                          key={b.id}
+                          style={{ borderTop: '1px solid var(--border)' }}
+                        >
+                          <td
+                            style={{
+                              padding: '10px 14px',
+                              color: 'var(--muted)',
+                            }}
+                          >
+                            #{b.id}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <div style={{ fontWeight: 600 }}>
+                              {b.user_name || `User #${b.user_id}`}
+                            </div>
+                            <div
+                              style={{ fontSize: 11, color: 'var(--muted)' }}
+                            >
+                              {b.user_email}
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <div style={{ fontWeight: 600 }}>
+                              {b.consultant_name}
+                            </div>
+                            <div
+                              style={{ fontSize: 11, color: 'var(--muted)' }}
+                            >
+                              {b.specialization}
+                            </div>
+                          </td>
+                          <td
+                            style={{
+                              padding: '10px 14px',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {b.booking_date}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            {b.booking_time}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            {b.consultation_method === 'video_meeting'
+                              ? '📹 Video'
+                              : '💬 Chat'}
+                          </td>
+                          <td style={{ padding: '10px 14px', fontWeight: 700 }}>
+                            {rp(b.total_fee)}
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <StatusBadge b={b} />
+                          </td>
+                          <td style={{ padding: '10px 14px' }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 5,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              {!expired && (
                                 <button
                                   onClick={() =>
-                                    openModal('sendZoom', {
-                                      id: b.id,
-                                      zoom_link: `https://zoom.us/j/${Math.floor(Math.random() * 9000000000 + 1000000000)}`,
-                                      bk: b,
-                                    })
+                                    openModal('editBooking', { ...b })
                                   }
                                   style={{
-                                    background: '#dbeafe',
-                                    color: '#1d4ed8',
-                                    border: '1px solid #93c5fd',
+                                    background: 'var(--ink)',
+                                    color: '#fff',
+                                    border: 'none',
                                     borderRadius: 6,
                                     padding: '4px 10px',
                                     fontSize: 11,
@@ -1463,641 +1601,711 @@ export default function AdminPanel() {
                                     cursor: 'pointer',
                                   }}
                                 >
-                                  🔗 Zoom
+                                  Edit
                                 </button>
                               )}
-                            {expired && (
-                              <span
-                                style={{
-                                  fontSize: 11,
-                                  color: 'var(--muted)',
-                                  fontStyle: 'italic',
-                                }}
-                              >
-                                Selesai
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {visibleBookings.length === 0 && (
-                <div
-                  style={{
-                    padding: 32,
-                    textAlign: 'center',
-                    color: 'var(--muted)',
-                    fontSize: 13,
-                  }}
-                >
-                  Tidak ada booking.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {page === 'consultants' && (
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 14,
-                flexWrap: 'wrap',
-                gap: 10,
-              }}
-            >
-              <input
-                value={csSearch}
-                onChange={(e) => setCsSearch(e.target.value)}
-                placeholder="Cari konsultan / spesialisasi..."
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 8,
-                  padding: '8px 13px',
-                  fontSize: 12,
-                  outline: 'none',
-                  width: 240,
-                }}
-              />
-              <button
-                onClick={() =>
-                  openModal('addConsultant', {
-                    name: '',
-                    specialization: '',
-                    bio: '',
-                    photo_url: '',
-                    experience_years: 1,
-                    rate: 200000,
-                    rating: 5.0,
-                    is_available: true,
-                  })
-                }
-                style={{
-                  background: 'var(--ink)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 9,
-                  padding: '9px 18px',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                + Tambah Konsultan
-              </button>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))',
-                gap: 14,
-              }}
-            >
-              {filteredCs.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    background: '#fff',
-                    border: '1px solid var(--border)',
-                    borderRadius: 12,
-                    padding: 16,
-                  }}
-                >
+                              {b.consultation_method === 'video_meeting' &&
+                                !expired && (
+                                  <button
+                                    onClick={() =>
+                                      openModal('sendZoom', {
+                                        id: b.id,
+                                        zoom_link: `https://zoom.us/j/${Math.floor(Math.random() * 9000000000 + 1000000000)}`,
+                                        bk: b,
+                                      })
+                                    }
+                                    style={{
+                                      background: '#dbeafe',
+                                      color: '#1d4ed8',
+                                      border: '1px solid #93c5fd',
+                                      borderRadius: 6,
+                                      padding: '4px 10px',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    🔗 Zoom
+                                  </button>
+                                )}
+                              {expired && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: 'var(--muted)',
+                                    fontStyle: 'italic',
+                                  }}
+                                >
+                                  Selesai
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {visibleBookings.length === 0 && (
                   <div
                     style={{
-                      display: 'flex',
-                      gap: 12,
-                      alignItems: 'center',
-                      marginBottom: 10,
+                      padding: 32,
+                      textAlign: 'center',
+                      color: 'var(--muted)',
+                      fontSize: 13,
+                    }}
+                  >
+                    Tidak ada booking.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {page === 'consultants' && (
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 14,
+                  flexWrap: 'wrap',
+                  gap: 10,
+                }}
+              >
+                <input
+                  value={csSearch}
+                  onChange={(e) => setCsSearch(e.target.value)}
+                  placeholder="Cari konsultan / spesialisasi..."
+                  style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    padding: '8px 13px',
+                    fontSize: 12,
+                    outline: 'none',
+                    width: 240,
+                    maxWidth: '100%',
+                  }}
+                />
+                <button
+                  onClick={() =>
+                    openModal('addConsultant', {
+                      name: '',
+                      specialization: '',
+                      bio: '',
+                      photo_url: '',
+                      experience_years: 1,
+                      rate: 200000,
+                      rating: 5.0,
+                      is_available: true,
+                    })
+                  }
+                  style={{
+                    background: 'var(--ink)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 9,
+                    padding: '9px 18px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Tambah Konsultan
+                </button>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))',
+                  gap: 14,
+                }}
+              >
+                {filteredCs.map((c) => (
+                  <div
+                    key={c.id}
+                    style={{
+                      background: '#fff',
+                      border: '1px solid var(--border)',
+                      borderRadius: 12,
+                      padding: 16,
                     }}
                   >
                     <div
                       style={{
-                        width: 46,
-                        height: 46,
-                        borderRadius: '50%',
-                        background:
-                          'linear-gradient(135deg,var(--green-lt),var(--green-3))',
                         display: 'flex',
+                        gap: 12,
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 18,
-                        fontWeight: 800,
-                        overflow: 'hidden',
-                        flexShrink: 0,
+                        marginBottom: 10,
                       }}
                     >
-                      {c.photo_url ? (
-                        <img
-                          src={c.photo_url}
-                          alt=""
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      ) : (
-                        c.name?.charAt(0) || 'K'
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontWeight: 700,
-                          fontSize: 13,
+                          width: 46,
+                          height: 46,
+                          borderRadius: '50%',
+                          background:
+                            'linear-gradient(135deg,var(--green-lt),var(--green-3))',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 18,
+                          fontWeight: 800,
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
                         }}
                       >
-                        {c.name}
+                        {c.photo_url ? (
+                          <img
+                            src={c.photo_url}
+                            alt=""
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        ) : (
+                          c.name?.charAt(0) || 'K'
+                        )}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                        {c.specialization}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 13,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {c.name}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                          {c.specialization}
+                        </div>
                       </div>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          background: c.is_available ? '#dcfce7' : '#fee2e2',
+                          color: c.is_available ? '#166534' : '#b91c1c',
+                          borderRadius: 6,
+                          padding: '2px 7px',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {c.is_available ? 'Aktif' : 'Nonaktif'}
+                      </span>
                     </div>
-                    <span
+                    <div
                       style={{
-                        fontSize: 10,
-                        background: c.is_available ? '#dcfce7' : '#fee2e2',
-                        color: c.is_available ? '#166534' : '#b91c1c',
-                        borderRadius: 6,
-                        padding: '2px 7px',
-                        fontWeight: 700,
-                        flexShrink: 0,
+                        display: 'flex',
+                        gap: 6,
+                        flexWrap: 'wrap',
+                        marginBottom: 12,
                       }}
                     >
-                      {c.is_available ? 'Aktif' : 'Nonaktif'}
-                    </span>
+                      <span
+                        style={{
+                          background: '#fef3c7',
+                          color: '#854d0e',
+                          fontSize: 11,
+                          borderRadius: 6,
+                          padding: '2px 7px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        ⭐ {c.rating}
+                      </span>
+                      <span
+                        style={{
+                          background: 'var(--green-mist)',
+                          color: 'var(--green-2)',
+                          fontSize: 11,
+                          borderRadius: 6,
+                          padding: '2px 7px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {c.experience_years} thn
+                      </span>
+                      <span
+                        style={{
+                          background: 'var(--paper)',
+                          border: '1px solid var(--border)',
+                          fontSize: 11,
+                          borderRadius: 6,
+                          padding: '2px 7px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {rp(c.rate)}/sesi
+                      </span>
+                    </div>
+                    {c.bio && (
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--muted)',
+                          marginBottom: 10,
+                          lineHeight: 1.5,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {c.bio}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => openModal('editConsultant', { ...c })}
+                        style={{
+                          flex: 1,
+                          background: 'var(--ink)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 7,
+                          padding: '7px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() =>
+                          setDelConfirm({
+                            type: 'consultant',
+                            id: c.id,
+                            name: c.name,
+                          })
+                        }
+                        style={{
+                          flex: 1,
+                          background: '#fee2e2',
+                          color: '#b91c1c',
+                          border: '1px solid #fca5a5',
+                          borderRadius: 7,
+                          padding: '7px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Hapus
+                      </button>
+                    </div>
                   </div>
+                ))}
+                {filteredCs.length === 0 && (
                   <div
                     style={{
-                      display: 'flex',
-                      gap: 6,
-                      flexWrap: 'wrap',
-                      marginBottom: 12,
+                      padding: 32,
+                      textAlign: 'center',
+                      color: 'var(--muted)',
+                      fontSize: 13,
+                      gridColumn: '1/-1',
                     }}
                   >
-                    <span
-                      style={{
-                        background: '#fef3c7',
-                        color: '#854d0e',
-                        fontSize: 11,
-                        borderRadius: 6,
-                        padding: '2px 7px',
-                        fontWeight: 600,
-                      }}
-                    >
-                      ⭐ {c.rating}
-                    </span>
-                    <span
-                      style={{
-                        background: 'var(--green-mist)',
-                        color: 'var(--green-2)',
-                        fontSize: 11,
-                        borderRadius: 6,
-                        padding: '2px 7px',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {c.experience_years} thn
-                    </span>
-                    <span
-                      style={{
-                        background: 'var(--paper)',
-                        border: '1px solid var(--border)',
-                        fontSize: 11,
-                        borderRadius: 6,
-                        padding: '2px 7px',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {rp(c.rate)}/sesi
-                    </span>
+                    Tidak ada konsultan.
                   </div>
-                  {c.bio && (
-                    <p
-                      style={{
-                        fontSize: 11,
-                        color: 'var(--muted)',
-                        marginBottom: 10,
-                        lineHeight: 1.5,
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {c.bio}
-                    </p>
-                  )}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={() => openModal('editConsultant', { ...c })}
-                      style={{
-                        flex: 1,
-                        background: 'var(--ink)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 7,
-                        padding: '7px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() =>
-                        setDelConfirm({
-                          type: 'consultant',
-                          id: c.id,
-                          name: c.name,
-                        })
-                      }
-                      style={{
-                        flex: 1,
-                        background: '#fee2e2',
-                        color: '#b91c1c',
-                        border: '1px solid #fca5a5',
-                        borderRadius: 7,
-                        padding: '7px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Hapus
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {filteredCs.length === 0 && (
-                <div
-                  style={{
-                    padding: 32,
-                    textAlign: 'center',
-                    color: 'var(--muted)',
-                    fontSize: 13,
-                    gridColumn: '1/-1',
-                  }}
-                >
-                  Tidak ada konsultan.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {page === 'health' && (
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid var(--border)',
-              borderRadius: 12,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                padding: '14px 18px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span style={{ fontWeight: 700, fontSize: 14 }}>
-                Riwayat Health Check ({healthChecks.length})
-              </span>
-              <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
-                {['Sehat', 'Rawan', 'Kritis'].map((s) => {
-                  const count = healthChecks.filter(
-                    (h) => h.status === s,
-                  ).length;
-                  const cls =
-                    s === 'Sehat'
-                      ? ['#dcfce7', '#166534']
-                      : s === 'Rawan'
-                        ? ['#fef3c7', '#854d0e']
-                        : ['#fee2e2', '#b91c1c'];
-                  return (
-                    <span
-                      key={s}
-                      style={{
-                        background: cls[0],
-                        color: cls[1],
-                        borderRadius: 7,
-                        padding: '3px 10px',
-                        fontWeight: 700,
-                        fontSize: 11,
-                      }}
-                    >
-                      {s}: {count}
-                    </span>
-                  );
-                })}
+                )}
               </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table
+          )}
+
+          {page === 'health' && (
+            <div
+              style={{
+                background: '#fff',
+                border: '1px solid var(--border)',
+                borderRadius: 12,
+                overflow: 'hidden',
+              }}
+            >
+              <div
                 style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: 12,
+                  padding: '14px 18px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 10,
+                  flexWrap: 'wrap',
                 }}
               >
-                <thead style={{ background: 'var(--paper)' }}>
-                  <tr>
-                    {[
-                      'Pengguna',
-                      'Pendapatan/bln',
-                      'Pengeluaran/bln',
-                      'Cicilan/bln',
-                      'Dana Darurat',
-                      'DTI',
-                      'EIR',
-                      'Skor',
-                      'Status',
-                      'Tanggal',
-                    ].map((h) => (
-                      <th
-                        key={h}
+                <span style={{ fontWeight: 700, fontSize: 14 }}>
+                  Riwayat Health Check ({healthChecks.length})
+                </span>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    fontSize: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {['Sehat', 'Rawan', 'Kritis'].map((s) => {
+                    const count = healthChecks.filter(
+                      (h) => h.status === s,
+                    ).length;
+                    const cls =
+                      s === 'Sehat'
+                        ? ['#dcfce7', '#166534']
+                        : s === 'Rawan'
+                          ? ['#fef3c7', '#854d0e']
+                          : ['#fee2e2', '#b91c1c'];
+                    return (
+                      <span
+                        key={s}
                         style={{
-                          padding: '10px 12px',
-                          textAlign: 'left',
+                          background: cls[0],
+                          color: cls[1],
+                          borderRadius: 7,
+                          padding: '3px 10px',
                           fontWeight: 700,
-                          color: 'var(--muted)',
-                          fontSize: 10,
-                          textTransform: 'uppercase',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {healthChecks.map((h) => (
-                    <tr
-                      key={h.id}
-                      style={{ borderTop: '1px solid var(--border)' }}
-                    >
-                      <td style={{ padding: '9px 12px' }}>
-                        <div style={{ fontWeight: 600 }}>{h.user_name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--muted)' }}>
-                          {h.user_email}
-                        </div>
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        {rp(h.monthly_income)}
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        {rp(h.monthly_expenses)}
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        {rp(h.monthly_debt_payment)}
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        {rp(h.emergency_fund)}
-                      </td>
-                      <td style={{ padding: '9px 12px', fontWeight: 700 }}>
-                        {h.debt_to_income_ratio}%
-                      </td>
-                      <td style={{ padding: '9px 12px', fontWeight: 700 }}>
-                        {h.expense_to_income_ratio}%
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        <span
-                          style={{
-                            fontFamily: "'Montserrat',sans-serif",
-                            fontSize: 15,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {h.score}
-                        </span>
-                        <span style={{ fontSize: 10, color: 'var(--muted)' }}>
-                          /100
-                        </span>
-                      </td>
-                      <td style={{ padding: '9px 12px' }}>
-                        <span
-                          style={{
-                            background:
-                              h.status === 'Sehat'
-                                ? '#dcfce7'
-                                : h.status === 'Rawan'
-                                  ? '#fef3c7'
-                                  : '#fee2e2',
-                            color:
-                              h.status === 'Sehat'
-                                ? '#166534'
-                                : h.status === 'Rawan'
-                                  ? '#854d0e'
-                                  : '#b91c1c',
-                            borderRadius: 6,
-                            padding: '2px 8px',
-                            fontSize: 10,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {h.status}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: '9px 12px',
-                          color: 'var(--muted)',
-                          whiteSpace: 'nowrap',
                           fontSize: 11,
                         }}
                       >
-                        {new Date(h.created_at).toLocaleDateString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {healthChecks.length === 0 && (
-                <div
+                        {s}: {count}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="health-table-wrap">
+                <table
                   style={{
-                    padding: 32,
-                    textAlign: 'center',
-                    color: 'var(--muted)',
-                    fontSize: 13,
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 12,
+                    tableLayout: 'fixed',
                   }}
                 >
-                  Belum ada data health check.
-                </div>
-              )}
+                  <colgroup>
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '13%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '11%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '8%' }} />
+                    <col style={{ width: '7%' }} />
+                    <col style={{ width: '10%' }} />
+                  </colgroup>
+                  <thead style={{ background: 'var(--paper)' }}>
+                    <tr>
+                      {[
+                        'Pengguna',
+                        'Pendapatan/bln',
+                        'Pengeluaran/bln',
+                        'Cicilan/bln',
+                        'Dana Darurat',
+                        'DTI',
+                        'EIR',
+                        'Skor',
+                        'Status',
+                        'Tanggal',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            padding: '10px 8px',
+                            textAlign: 'left',
+                            fontWeight: 700,
+                            color: 'var(--muted)',
+                            fontSize: 10,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {healthChecks.map((h) => (
+                      <tr
+                        key={h.id}
+                        style={{ borderTop: '1px solid var(--border)' }}
+                      >
+                        <td style={{ padding: '9px 8px' }}>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {h.user_name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: 'var(--muted)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {h.user_email}
+                          </div>
+                        </td>
+                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                          {rp(h.monthly_income)}
+                        </td>
+                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                          {rp(h.monthly_expenses)}
+                        </td>
+                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                          {rp(h.monthly_debt_payment)}
+                        </td>
+                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                          {rp(h.emergency_fund)}
+                        </td>
+                        <td style={{ padding: '9px 8px', fontWeight: 700 }}>
+                          {h.debt_to_income_ratio}%
+                        </td>
+                        <td style={{ padding: '9px 8px', fontWeight: 700 }}>
+                          {h.expense_to_income_ratio}%
+                        </td>
+                        <td style={{ padding: '9px 8px' }}>
+                          <span
+                            style={{
+                              fontFamily: "'Montserrat',sans-serif",
+                              fontSize: 15,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {h.score}
+                          </span>
+                          <span style={{ fontSize: 10, color: 'var(--muted)' }}>
+                            /100
+                          </span>
+                        </td>
+                        <td style={{ padding: '9px 8px' }}>
+                          <span
+                            style={{
+                              background:
+                                h.status === 'Sehat'
+                                  ? '#dcfce7'
+                                  : h.status === 'Rawan'
+                                    ? '#fef3c7'
+                                    : '#fee2e2',
+                              color:
+                                h.status === 'Sehat'
+                                  ? '#166534'
+                                  : h.status === 'Rawan'
+                                    ? '#854d0e'
+                                    : '#b91c1c',
+                              borderRadius: 6,
+                              padding: '2px 6px',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {h.status}
+                          </span>
+                        </td>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            color: 'var(--muted)',
+                            fontSize: 11,
+                          }}
+                        >
+                          {new Date(h.created_at).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {healthChecks.length === 0 && (
+                  <div
+                    style={{
+                      padding: 32,
+                      textAlign: 'center',
+                      color: 'var(--muted)',
+                      fontSize: 13,
+                    }}
+                  >
+                    Belum ada data health check.
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {page === 'settings' && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 16,
-              alignItems: 'start',
-            }}
-          >
+          {page === 'settings' && (
             <div
               style={{
-                background: '#fff',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                overflow: 'hidden',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))',
+                gap: 16,
+                alignItems: 'start',
               }}
             >
               <div
                 style={{
-                  padding: '14px 18px',
-                  borderBottom: '1px solid var(--border)',
+                  background: '#fff',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  overflow: 'hidden',
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: 14 }}>
-                  Informasi Admin
-                </span>
-              </div>
-              <div style={{ padding: 18 }}>
-                {[
-                  ['Email Admin', 'admin@smartfinance.id'],
-                  [
-                    'API Base URL',
-                    import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-                  ],
-                  ['Versi', 'v1.0.0'],
-                ].map(([k, v]) => (
-                  <div
-                    key={k}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '11px 0',
-                      borderBottom: '1px solid var(--border)',
-                      fontSize: 13,
-                      gap: 8,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <span style={{ color: 'var(--muted)', flexShrink: 0 }}>
-                      {k}
-                    </span>
-                    <code
+                <div
+                  style={{
+                    padding: '14px 18px',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>
+                    Informasi Admin
+                  </span>
+                </div>
+                <div style={{ padding: 18 }}>
+                  {[
+                    ['Email Admin', 'admin@smartfinance.id'],
+                    [
+                      'API Base URL',
+                      import.meta.env.VITE_API_URL ||
+                        'http://localhost:3000/api',
+                    ],
+                    ['Versi', 'v1.0.0'],
+                  ].map(([k, v]) => (
+                    <div
+                      key={k}
                       style={{
-                        color: 'var(--ink)',
-                        fontSize: 12,
-                        background: 'var(--paper)',
-                        padding: '2px 7px',
-                        borderRadius: 5,
-                        wordBreak: 'break-all',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '11px 0',
+                        borderBottom: '1px solid var(--border)',
+                        fontSize: 13,
+                        gap: 8,
+                        flexWrap: 'wrap',
                       }}
                     >
-                      {v}
-                    </code>
+                      <span style={{ color: 'var(--muted)', flexShrink: 0 }}>
+                        {k}
+                      </span>
+                      <code
+                        style={{
+                          color: 'var(--ink)',
+                          fontSize: 12,
+                          background: 'var(--paper)',
+                          padding: '2px 7px',
+                          borderRadius: 5,
+                          wordBreak: 'break-all',
+                        }}
+                      >
+                        {v}
+                      </code>
+                    </div>
+                  ))}
+                  <div style={{ marginTop: 18 }}>
+                    <button
+                      onClick={doLogout}
+                      style={{
+                        background: '#fee2e2',
+                        color: '#b91c1c',
+                        border: '1px solid #fca5a5',
+                        borderRadius: 9,
+                        padding: '10px 20px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🚪 Keluar dari Admin
+                    </button>
                   </div>
-                ))}
-                <div style={{ marginTop: 18 }}>
-                  <button
-                    onClick={doLogout}
-                    style={{
-                      background: '#fee2e2',
-                      color: '#b91c1c',
-                      border: '1px solid #fca5a5',
-                      borderRadius: 9,
-                      padding: '10px 20px',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    🚪 Keluar dari Admin
-                  </button>
                 </div>
               </div>
-            </div>
 
-            <div
-              style={{
-                background: '#fff',
-                border: '1px solid var(--border)',
-                borderRadius: 12,
-                overflow: 'hidden',
-              }}
-            >
               <div
                 style={{
-                  padding: '14px 18px',
-                  borderBottom: '1px solid var(--border)',
+                  background: '#fff',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  overflow: 'hidden',
                 }}
               >
-                <span style={{ fontWeight: 700, fontSize: 14 }}>
-                  Endpoint API Admin
-                </span>
-              </div>
-              <div style={{ padding: '4px 18px 14px' }}>
-                {[
-                  ['GET /admin/stats', 'Statistik dashboard'],
-                  ['GET /admin/users', 'Daftar semua user'],
-                  ['PATCH /admin/users/:id', 'Edit user'],
-                  ['DELETE /admin/users/:id', 'Hapus user'],
-                  ['GET /admin/bookings', 'Semua booking'],
-                  ['PATCH /admin/bookings/:id/status', 'Update status booking'],
-                  ['POST /admin/bookings/:id/zoom', 'Kirim link Zoom'],
-                  ['GET /admin/health-checks', 'Semua health check'],
-                  ['GET /admin/consultants', 'Semua konsultan'],
-                  ['POST /admin/consultants', 'Tambah konsultan'],
-                  ['PATCH /admin/consultants/:id', 'Edit konsultan'],
-                  ['DELETE /admin/consultants/:id', 'Hapus konsultan'],
-                ].map(([ep, desc]) => (
-                  <div
-                    key={ep}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 0',
-                      borderBottom: '1px solid var(--border)',
-                      fontSize: 11,
-                      gap: 10,
-                    }}
-                  >
-                    <code
+                <div
+                  style={{
+                    padding: '14px 18px',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>
+                    Endpoint API Admin
+                  </span>
+                </div>
+                <div style={{ padding: '4px 18px 14px' }}>
+                  {[
+                    ['GET /admin/stats', 'Statistik dashboard'],
+                    ['GET /admin/users', 'Daftar semua user'],
+                    ['PATCH /admin/users/:id', 'Edit user'],
+                    ['DELETE /admin/users/:id', 'Hapus user'],
+                    ['GET /admin/bookings', 'Semua booking'],
+                    [
+                      'PATCH /admin/bookings/:id/status',
+                      'Update status booking',
+                    ],
+                    ['POST /admin/bookings/:id/zoom', 'Kirim link Zoom'],
+                    ['GET /admin/health-checks', 'Semua health check'],
+                    ['GET /admin/consultants', 'Semua konsultan'],
+                    ['POST /admin/consultants', 'Tambah konsultan'],
+                    ['PATCH /admin/consultants/:id', 'Edit konsultan'],
+                    ['DELETE /admin/consultants/:id', 'Hapus konsultan'],
+                  ].map(([ep, desc]) => (
+                    <div
+                      key={ep}
                       style={{
-                        color: 'var(--green-2)',
-                        fontFamily: 'monospace',
-                        flexShrink: 0,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 0',
+                        borderBottom: '1px solid var(--border)',
                         fontSize: 11,
+                        gap: 10,
                       }}
                     >
-                      {ep}
-                    </code>
-                    <span style={{ color: 'var(--muted)', textAlign: 'right' }}>
-                      {desc}
-                    </span>
-                  </div>
-                ))}
+                      <code
+                        style={{
+                          color: 'var(--green-2)',
+                          fontFamily: 'monospace',
+                          flexShrink: 0,
+                          fontSize: 11,
+                        }}
+                      >
+                        {ep}
+                      </code>
+                      <span
+                        style={{ color: 'var(--muted)', textAlign: 'right' }}
+                      >
+                        {desc}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {modal === 'editUser' && (
