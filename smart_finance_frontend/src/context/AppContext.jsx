@@ -23,6 +23,13 @@ export function AppProvider({ children }) {
   const [consultants, setConsultants] = useState([]);
   const [dashboard, setDashboard] = useState(null);
   const [busy, setBusy] = useState({ init: false, hc: false, bk: false });
+  const [zoomLinks, setZoomLinks] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('zoom_links') || '{}');
+    } catch {
+      return {};
+    }
+  });
   const ready = useRef(false);
 
   const tok = () => localStorage.getItem('token');
@@ -30,6 +37,16 @@ export function AppProvider({ children }) {
     Authorization: `Bearer ${tok()}`,
     'Content-Type': 'application/json',
   });
+
+  const saveZoomLink = useCallback((bookingId, link) => {
+    setZoomLinks((prev) => {
+      const next = { ...prev, [bookingId]: link };
+      try {
+        localStorage.setItem('zoom_links', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   const loadHealth = useCallback(async () => {
     if (!tok()) return;
@@ -243,6 +260,8 @@ export function AppProvider({ children }) {
         dashboard,
         busy,
         lastHC,
+        zoomLinks,
+        saveZoomLink,
         login,
         register,
         logout,

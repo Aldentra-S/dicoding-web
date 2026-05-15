@@ -9,6 +9,7 @@ import ConsultationList from './consultation/consultationList.jsx';
 import BookingConsultation from './consultation/bookingConsultation.jsx';
 import Education from './education/educationPage.jsx';
 import Profile from './profile/userProfile.jsx';
+import AdminPanel from './admin/AdminPanel.jsx';
 import './index.css';
 
 const Guard = ({ children }) => {
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Auth />} />
+          <Route path="/admin" element={<AdminPanel />} />
           <Route
             path="/dashboard"
             element={

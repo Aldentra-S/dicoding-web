@@ -13,6 +13,17 @@ import {
 import Layout from '../components/Layout.jsx';
 import { useApp } from '../context/AppContext.jsx';
 
+const isExpired = (b) => {
+  if (b.status !== 'booked') return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const bookingDate = new Date(b.booking_date);
+  bookingDate.setHours(0, 0, 0, 0);
+  return bookingDate < today;
+};
+
+const resolveStatus = (b) => (isExpired(b) ? 'completed' : b.status);
+
 export default function Profile() {
   const navigate = useNavigate();
   const {
@@ -97,6 +108,7 @@ export default function Profile() {
         .slice(0, 2)
         .toUpperCase()
     : 'SF';
+
   const lastHC = healthHistory[0];
   const sc =
     lastHC?.status === 'Sehat'
@@ -118,8 +130,10 @@ export default function Profile() {
         : '#b91c1c';
 
   const totalBk = bookings.length;
-  const doneBk = bookings.filter((b) => b.status === 'completed').length;
-  const activeBk = bookings.filter((b) => b.status === 'booked').length;
+  const doneBk = bookings.filter(
+    (b) => resolveStatus(b) === 'completed',
+  ).length;
+  const activeBk = bookings.filter((b) => resolveStatus(b) === 'booked').length;
 
   const chartData = [...healthHistory]
     .reverse()
@@ -136,6 +150,21 @@ export default function Profile() {
 
   const bColor = (s) =>
     s === 'Sehat' ? '#2d7a52' : s === 'Rawan' ? '#d97706' : '#b91c1c';
+
+  const statusLabel = (b) => {
+    const s = resolveStatus(b);
+    if (s === 'booked') return 'Terjadwal';
+    if (s === 'completed') return 'Selesai';
+    if (s === 'cancelled') return 'Dibatalkan';
+    return s;
+  };
+
+  const statusClass = (b) => {
+    const s = resolveStatus(b);
+    if (s === 'booked') return 'b-blue';
+    if (s === 'completed') return 'b-green';
+    return 'b-gray';
+  };
 
   return (
     <Layout
@@ -826,14 +855,8 @@ export default function Profile() {
                           : '-'}
                       </td>
                       <td>
-                        <span
-                          className={`badge ${b.status === 'booked' ? 'b-blue' : b.status === 'completed' ? 'b-green' : 'b-gray'}`}
-                        >
-                          {b.status === 'booked'
-                            ? 'Terjadwal'
-                            : b.status === 'completed'
-                              ? 'Selesai'
-                              : 'Dibatalkan'}
+                        <span className={`badge ${statusClass(b)}`}>
+                          {statusLabel(b)}
                         </span>
                       </td>
                     </tr>

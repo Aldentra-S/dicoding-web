@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext.jsx';
 
 export default function ConsultationList() {
   const navigate = useNavigate();
-  const { consultants, bookings, busy, cancelBooking } = useApp();
+  const { consultants, bookings, busy, cancelBooking, zoomLinks } = useApp();
   const [tab, setTab] = useState('list');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('rating');
@@ -34,6 +34,20 @@ export default function ConsultationList() {
       </span>
     ));
 
+  const isExpired = (booking) => {
+    if (booking.status !== 'booked') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const bookingDate = new Date(booking.booking_date);
+    bookingDate.setHours(0, 0, 0, 0);
+    return bookingDate < today;
+  };
+
+  const resolveStatus = (booking) => {
+    if (isExpired(booking)) return 'completed';
+    return booking.status;
+  };
+
   const bkBadge = (s) => {
     const m = {
       booked: ['b-blue', 'Terjadwal'],
@@ -55,7 +69,9 @@ export default function ConsultationList() {
     }
   };
 
-  const activeBk = bookings.filter((b) => b.status === 'booked');
+  const activeBk = bookings.filter(
+    (b) => b.status === 'booked' && !isExpired(b),
+  );
 
   return (
     <Layout
@@ -345,7 +361,10 @@ export default function ConsultationList() {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <span className="tag">{bookings.length} total</span>
               <span className="badge b-green">
-                {bookings.filter((b) => b.status === 'completed').length}{' '}
+                {
+                  bookings.filter((b) => resolveStatus(b) === 'completed')
+                    .length
+                }{' '}
                 selesai
               </span>
               <span className="badge b-blue">{activeBk.length} aktif</span>
@@ -375,54 +394,95 @@ export default function ConsultationList() {
                     <th>Metode</th>
                     <th>Biaya</th>
                     <th>Status</th>
+                    <th>Link Zoom</th>
                     <th>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings.map((b) => (
-                    <tr key={b.id}>
-                      <td>
-                        <div style={{ fontWeight: 600 }}>
-                          {b.consultant_name}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                          {b.specialization}
-                        </div>
-                      </td>
-                      <td style={{ fontSize: 12 }}>
-                        {new Date(b.booking_date).toLocaleDateString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                        })}
-                      </td>
-                      <td>{b.booking_time}</td>
-                      <td>
-                        <span className="tag">
-                          {b.consultation_method === 'video_meeting'
-                            ? '📹 Video'
-                            : '💬 Chat'}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {b.total_fee
-                          ? `Rp ${Number(b.total_fee).toLocaleString('id-ID')}`
-                          : '-'}
-                      </td>
-                      <td>{bkBadge(b.status)}</td>
-                      <td>
-                        {b.status === 'booked' && (
-                          <button
-                            className="btn btn-red btn-sm"
-                            onClick={() => doCancel(b.id)}
-                            disabled={cancelling === b.id}
-                          >
-                            {cancelling === b.id ? '...' : 'Batalkan'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {bookings.map((b) => {
+                    const zoom =
+                      b.consultation_method === 'video_meeting'
+                        ? zoomLinks[b.id]
+                        : null;
+                    return (
+                      <tr key={b.id}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>
+                            {b.consultant_name}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                            {b.specialization}
+                          </div>
+                        </td>
+                        <td style={{ fontSize: 12 }}>
+                          {new Date(b.booking_date).toLocaleDateString(
+                            'id-ID',
+                            {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            },
+                          )}
+                        </td>
+                        <td>{b.booking_time}</td>
+                        <td>
+                          <span className="tag">
+                            {b.consultation_method === 'video_meeting'
+                              ? '📹 Video'
+                              : '💬 Chat'}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: 600 }}>
+                          {b.total_fee
+                            ? `Rp ${Number(b.total_fee).toLocaleString('id-ID')}`
+                            : '-'}
+                        </td>
+                        <td>{bkBadge(resolveStatus(b))}</td>
+                        <td>
+                          {zoom ? (
+                            <a
+                              href={zoom}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                background: 'var(--green-mist)',
+                                border: '1px solid var(--green-2)',
+                                color: 'var(--ink)',
+                                borderRadius: 7,
+                                padding: '4px 10px',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              🔗 Buka Zoom
+                            </a>
+                          ) : (
+                            <span
+                              style={{ fontSize: 11, color: 'var(--muted)' }}
+                            >
+                              —
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {b.status === 'booked' && !isExpired(b) && (
+                            <button
+                              className="btn btn-red btn-sm"
+                              onClick={() => doCancel(b.id)}
+                              disabled={cancelling === b.id}
+                            >
+                              {cancelling === b.id ? '...' : 'Batalkan'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -11,21 +11,6 @@ import {
 import Layout from '../components/Layout.jsx';
 import { useApp } from '../context/AppContext.jsx';
 
-const INC = [
-  1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000,
-  10000000, 15000000, 20000000,
-];
-const EXP = [
-  500000, 1000000, 1500000, 2000000, 2500000, 3000000, 4000000, 5000000,
-  6000000, 8000000, 10000000,
-];
-const DEBT = [
-  0, 500000, 1000000, 1500000, 2000000, 2500000, 3000000, 4000000, 5000000,
-  8000000,
-];
-const EF = [
-  0, 1000000, 2000000, 3000000, 5000000, 10000000, 15000000, 20000000,
-];
 const rp = (v) => `Rp ${Number(v).toLocaleString('id-ID')}`;
 const PIE_C = ['#b91c1c', '#d97706', '#2d7a52'];
 
@@ -33,19 +18,100 @@ export default function FinancialHealth() {
   const navigate = useNavigate();
   const { healthHistory, doHealthCheck, busy } = useApp();
   const [tab, setTab] = useState('form');
+  const [period, setPeriod] = useState('monthly');
   const [result, setResult] = useState(null);
   const [err, setErr] = useState('');
   const [form, setForm] = useState({
-    monthly_income: 8000000,
-    monthly_expenses: 5200000,
-    monthly_debt_payment: 1500000,
-    emergency_fund: 0,
+    monthly_income: '',
+    monthly_expenses: '',
+    monthly_debt_payment: '',
+    emergency_fund: '',
   });
+
+  const handlePeriodChange = (targetPeriod) => {
+    if (period === targetPeriod) return;
+
+    setForm((prev) => {
+      let income =
+        prev.monthly_income === '' ? '' : Number(prev.monthly_income);
+      let expenses =
+        prev.monthly_expenses === '' ? '' : Number(prev.monthly_expenses);
+      let debt =
+        prev.monthly_debt_payment === ''
+          ? ''
+          : Number(prev.monthly_debt_payment);
+      const emergency = prev.emergency_fund;
+
+      if (income !== '' || expenses !== '' || debt !== '') {
+        let monthlyIncome = 0;
+        let monthlyExpenses = 0;
+        let monthlyDebt = 0;
+
+        if (period === 'daily') {
+          monthlyIncome = income * 30;
+          monthlyExpenses = expenses * 30;
+          monthlyDebt = debt * 30;
+        } else if (period === 'weekly') {
+          monthlyIncome = income * 4;
+          monthlyExpenses = expenses * 4;
+          monthlyDebt = debt * 4;
+        } else {
+          monthlyIncome = income;
+          monthlyExpenses = expenses;
+          monthlyDebt = debt;
+        }
+
+        if (targetPeriod === 'daily') {
+          income = monthlyIncome / 30;
+          expenses = monthlyExpenses / 30;
+          debt = monthlyDebt / 30;
+        } else if (targetPeriod === 'weekly') {
+          income = monthlyIncome / 4;
+          expenses = monthlyExpenses / 4;
+          debt = monthlyDebt / 4;
+        } else {
+          income = monthlyIncome;
+          expenses = monthlyExpenses;
+          debt = monthlyDebt;
+        }
+      }
+
+      return {
+        monthly_income: income === '' ? '' : Math.round(income),
+        monthly_expenses: expenses === '' ? '' : Math.round(expenses),
+        monthly_debt_payment: debt === '' ? '' : Math.round(debt),
+        emergency_fund: emergency,
+      };
+    });
+
+    setPeriod(targetPeriod);
+  };
 
   const submit = async () => {
     setErr('');
     try {
-      const d = await doHealthCheck(form);
+      let income = Number(form.monthly_income) || 0;
+      let expenses = Number(form.monthly_expenses) || 0;
+      let debt = Number(form.monthly_debt_payment) || 0;
+
+      if (period === 'daily') {
+        income = income * 30;
+        expenses = expenses * 30;
+        debt = debt * 30;
+      } else if (period === 'weekly') {
+        income = income * 4;
+        expenses = expenses * 4;
+        debt = debt * 4;
+      }
+
+      const payload = {
+        monthly_income: income,
+        monthly_expenses: expenses,
+        monthly_debt_payment: debt,
+        emergency_fund: Number(form.emergency_fund) || 0,
+      };
+
+      const d = await doHealthCheck(payload);
       if (d.status === 'success') {
         setResult(d.data.result);
         setTab('result');
@@ -101,6 +167,13 @@ export default function FinancialHealth() {
 
   const rekom = (disp?.recommendation || '').split('\n\n').filter(Boolean);
 
+  const getLabel = (lbl) => {
+    if (lbl === 'Dana Darurat Dimiliki') return lbl;
+    if (period === 'daily') return `${lbl} Harian`;
+    if (period === 'weekly') return `${lbl} Mingguan`;
+    return `${lbl} Bulanan`;
+  };
+
   return (
     <Layout
       title="Financial Health Check"
@@ -126,8 +199,50 @@ export default function FinancialHealth() {
       {tab === 'form' && (
         <div className="grid-1-1" style={{ alignItems: 'start' }}>
           <div className="card">
-            <div className="card-hd">
+            <div
+              className="card-hd"
+              style={{
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: '12px',
+              }}
+            >
               <span className="card-title">Data Keuangan Anda</span>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '6px',
+                  background: '#f3f4f6',
+                  padding: '4px',
+                  borderRadius: '8px',
+                }}
+              >
+                {[
+                  ['daily', 'Harian'],
+                  ['weekly', 'Mingguan'],
+                  ['monthly', 'Bulanan'],
+                ].map(([p, label]) => (
+                  <button
+                    key={p}
+                    onClick={() => handlePeriodChange(p)}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: period === p ? '#ffffff' : 'transparent',
+                      color: period === p ? 'var(--ink, #111827)' : '#6b7280',
+                      boxShadow:
+                        period === p ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="card-body">
               {err && <div className="alert alert-err">{err}</div>}
@@ -140,25 +255,37 @@ export default function FinancialHealth() {
                 className="fh-form-grid"
               >
                 {[
-                  ['Pendapatan Bulanan', 'monthly_income', INC],
-                  ['Pengeluaran Bulanan', 'monthly_expenses', EXP],
-                  ['Cicilan / Hutang Bulanan', 'monthly_debt_payment', DEBT],
-                  ['Dana Darurat Dimiliki', 'emergency_fund', EF],
-                ].map(([lbl, key, opts]) => (
+                  ['Pendapatan', 'monthly_income'],
+                  ['Pengeluaran', 'monthly_expenses'],
+                  ['Cicilan / Hutang', 'monthly_debt_payment'],
+                  ['Dana Darurat Dimiliki', 'emergency_fund'],
+                ].map(([lbl, key]) => (
                   <div className="fg" key={key}>
-                    <label>{lbl}</label>
-                    <select
+                    <label>{getLabel(lbl)}</label>
+                    <input
+                      type="number"
                       value={form[key]}
                       onChange={(e) =>
-                        setForm({ ...form, [key]: Number(e.target.value) })
+                        setForm({
+                          ...form,
+                          [key]:
+                            e.target.value === '' ? '' : Number(e.target.value),
+                        })
                       }
-                    >
-                      {opts.map((v) => (
-                        <option key={v} value={v}>
-                          {rp(v)}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder={
+                        key === 'emergency_fund'
+                          ? 'Total akumulasi dana darurat'
+                          : `Nominal ${lbl}`
+                      }
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: '1px solid var(--border, #d1d5db)',
+                        borderRadius: '6px',
+                        marginTop: '4px',
+                        fontFamily: 'inherit',
+                      }}
+                    />
                   </div>
                 ))}
               </div>
@@ -166,6 +293,7 @@ export default function FinancialHealth() {
                 className="btn btn-dark btn-full"
                 onClick={submit}
                 disabled={busy.hc}
+                style={{ marginTop: '16px' }}
               >
                 {busy.hc ? (
                   <>
@@ -184,7 +312,8 @@ export default function FinancialHealth() {
                   marginTop: 9,
                 }}
               >
-                Hasil otomatis tersinkron ke Dashboard &amp; Profil
+                Hasil otomatis dikonversi ke data bulanan untuk sinkronisasi
+                Dashboard &amp; Profil
               </p>
             </div>
           </div>
@@ -219,8 +348,9 @@ export default function FinancialHealth() {
                     lineHeight: 1.6,
                   }}
                 >
-                  Sistem menganalisis 3 indikator: DTI Ratio, EIR Ratio, dan
-                  Dana Darurat untuk memberikan diagnosa finansial yang akurat.
+                  Sistem menganalisis 3 indikator utama (DTI, EIR, dan Dana
+                  Darurat) berdasarkan standarisasi finansial bulanan untuk
+                  hasil diagnosis yang presisi.
                 </p>
               </div>
             </div>

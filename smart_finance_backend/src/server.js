@@ -9,6 +9,7 @@ import consultantRoutes from './routes/consultantRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import insightRoutes from './routes/insightRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use('/api/health-check', healthCheckRoutes);
 app.use('/api/consultants', consultantRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/insights', insightRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({
