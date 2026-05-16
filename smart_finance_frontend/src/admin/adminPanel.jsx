@@ -250,18 +250,12 @@ const responsiveStyles = `
     z-index: 399;
   }
   .users-table-wrap {
-    width: 100%;
-  }
-  .users-table-wrap table {
-    width: 100%;
-    table-layout: fixed;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .health-table-wrap {
-    width: 100%;
-  }
-  .health-table-wrap table {
-    width: 100%;
-    table-layout: fixed;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   @media (max-width: 900px) {
     .bookings-table-wrap {
@@ -1238,19 +1232,9 @@ export default function AdminPanel() {
                     width: '100%',
                     borderCollapse: 'collapse',
                     fontSize: 12,
-                    tableLayout: 'fixed',
+                    minWidth: 640,
                   }}
                 >
-                  <colgroup>
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '18%' }} />
-                    <col style={{ width: '24%' }} />
-                    <col style={{ width: '14%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '8%' }} />
-                  </colgroup>
                   <thead style={{ background: 'var(--paper)' }}>
                     <tr>
                       {[
@@ -1273,6 +1257,7 @@ export default function AdminPanel() {
                             fontSize: 10,
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {h}
@@ -1290,6 +1275,7 @@ export default function AdminPanel() {
                           style={{
                             padding: '10px 10px',
                             color: 'var(--muted)',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           #{u.id}
@@ -1298,8 +1284,6 @@ export default function AdminPanel() {
                           style={{
                             padding: '10px 10px',
                             fontWeight: 600,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -1309,8 +1293,6 @@ export default function AdminPanel() {
                           style={{
                             padding: '10px 10px',
                             color: 'var(--muted)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -1320,8 +1302,6 @@ export default function AdminPanel() {
                           style={{
                             padding: '10px 10px',
                             color: 'var(--muted)',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -1360,6 +1340,7 @@ export default function AdminPanel() {
                             padding: '10px 10px',
                             color: 'var(--muted)',
                             fontSize: 11,
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {u.created_at
@@ -1371,7 +1352,7 @@ export default function AdminPanel() {
                             style={{
                               display: 'flex',
                               gap: 4,
-                              flexWrap: 'wrap',
+                              flexWrap: 'nowrap',
                             }}
                           >
                             <button
@@ -1385,6 +1366,7 @@ export default function AdminPanel() {
                                 fontSize: 10,
                                 fontWeight: 700,
                                 cursor: 'pointer',
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               Edit
@@ -1406,6 +1388,7 @@ export default function AdminPanel() {
                                 fontSize: 10,
                                 fontWeight: 700,
                                 cursor: 'pointer',
+                                whiteSpace: 'nowrap',
                               }}
                             >
                               Hapus
@@ -1582,7 +1565,7 @@ export default function AdminPanel() {
                               style={{
                                 display: 'flex',
                                 gap: 5,
-                                flexWrap: 'wrap',
+                                flexWrap: 'nowrap',
                               }}
                             >
                               {!expired && (
@@ -1599,6 +1582,7 @@ export default function AdminPanel() {
                                     fontSize: 11,
                                     fontWeight: 700,
                                     cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
                                   }}
                                 >
                                   Edit
@@ -1623,6 +1607,7 @@ export default function AdminPanel() {
                                       fontSize: 11,
                                       fontWeight: 700,
                                       cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
                                     }}
                                   >
                                     🔗 Zoom
@@ -1985,21 +1970,9 @@ export default function AdminPanel() {
                     width: '100%',
                     borderCollapse: 'collapse',
                     fontSize: 12,
-                    tableLayout: 'fixed',
+                    minWidth: 860,
                   }}
                 >
-                  <colgroup>
-                    <col style={{ width: '18%' }} />
-                    <col style={{ width: '13%' }} />
-                    <col style={{ width: '13%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '11%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '7%' }} />
-                    <col style={{ width: '10%' }} />
-                  </colgroup>
                   <thead style={{ background: 'var(--paper)' }}>
                     <tr>
                       {[
@@ -2023,6 +1996,7 @@ export default function AdminPanel() {
                             color: 'var(--muted)',
                             fontSize: 10,
                             textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {h}
@@ -2040,8 +2014,6 @@ export default function AdminPanel() {
                           <div
                             style={{
                               fontWeight: 600,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                             }}
                           >
@@ -2051,33 +2023,69 @@ export default function AdminPanel() {
                             style={{
                               fontSize: 10,
                               color: 'var(--muted)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
                             }}
                           >
                             {h.user_email}
                           </div>
                         </td>
-                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {rp(h.monthly_income)}
                         </td>
-                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {rp(h.monthly_expenses)}
                         </td>
-                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {rp(h.monthly_debt_payment)}
                         </td>
-                        <td style={{ padding: '9px 8px', fontSize: 11 }}>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            fontSize: 11,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {rp(h.emergency_fund)}
                         </td>
-                        <td style={{ padding: '9px 8px', fontWeight: 700 }}>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {h.debt_to_income_ratio}%
                         </td>
-                        <td style={{ padding: '9px 8px', fontWeight: 700 }}>
+                        <td
+                          style={{
+                            padding: '9px 8px',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
                           {h.expense_to_income_ratio}%
                         </td>
-                        <td style={{ padding: '9px 8px' }}>
+                        <td
+                          style={{ padding: '9px 8px', whiteSpace: 'nowrap' }}
+                        >
                           <span
                             style={{
                               fontFamily: "'Montserrat',sans-serif",
@@ -2121,6 +2129,7 @@ export default function AdminPanel() {
                             padding: '9px 8px',
                             color: 'var(--muted)',
                             fontSize: 11,
+                            whiteSpace: 'nowrap',
                           }}
                         >
                           {new Date(h.created_at).toLocaleDateString('id-ID', {
