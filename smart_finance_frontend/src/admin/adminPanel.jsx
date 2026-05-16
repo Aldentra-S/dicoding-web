@@ -534,7 +534,9 @@ export default function AdminPanel() {
   const paidCompletedCount = completedBookings.filter(
     (b) => Number(b.total_fee || 0) > 0,
   ).length;
-  const pendingCount = bookings.filter((b) => b.status === 'pending').length;
+  const pendingCount = bookings.filter(
+    (b) => resolveStatus(b) === 'pending',
+  ).length;
   const activeBookingCount = bookings.filter(
     (b) => resolveStatus(b) === 'booked',
   ).length;
@@ -992,7 +994,7 @@ export default function AdminPanel() {
                   [
                     '⏳',
                     'Booking Pending',
-                    stats.pending ?? pendingCount,
+                    pendingCount,
                     'Perlu konfirmasi',
                     '#d97706',
                   ],
