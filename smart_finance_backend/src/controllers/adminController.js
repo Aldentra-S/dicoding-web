@@ -417,6 +417,67 @@ const deleteConsultant = async (req, res) => {
   }
 };
 
+const getRevenueSummary = async (req, res) => {
+  try {
+    const [[{ today }]] = await pool.query(
+      `SELECT COALESCE(SUM(total_fee), 0) as today
+       FROM bookings
+       WHERE DATE(updated_at) = CURDATE() AND status = 'completed'`,
+    );
+    const [[{ this_week }]] = await pool.query(
+      `SELECT COALESCE(SUM(total_fee), 0) as this_week
+       FROM bookings
+       WHERE YEARWEEK(updated_at, 1) = YEARWEEK(NOW(), 1) AND status = 'completed'`,
+    );
+    const [[{ this_month }]] = await pool.query(
+      `SELECT COALESCE(SUM(total_fee), 0) as this_month
+       FROM bookings
+       WHERE MONTH(updated_at) = MONTH(NOW()) AND YEAR(updated_at) = YEAR(NOW()) AND status = 'completed'`,
+    );
+    const [by_consultant] = await pool.query(
+      `SELECT c.name, COUNT(*) as sessions, COALESCE(SUM(b.total_fee), 0) as total
+       FROM bookings b
+       JOIN consultants c ON b.consultant_id = c.id
+       WHERE b.status = 'completed'
+       GROUP BY c.id, c.name
+       ORDER BY total DESC`,
+    );
+    return res.status(200).json({
+      status: 'success',
+      data: { today, this_week, this_month, by_consultant },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: 'error', message: 'Terjadi kesalahan server.' });
+  }
+};
+
+const getTransactions = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT b.id, u.name as user_name, u.email as user_email,
+        c.name as consultant_name, b.total_fee,
+        b.session_type as payment_method,
+        b.status as booking_status,
+        b.updated_at as paid_at
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       JOIN consultants c ON b.consultant_id = c.id
+       WHERE b.status = 'completed'
+       ORDER BY b.updated_at DESC`,
+    );
+    return res.status(200).json({
+      status: 'success',
+      data: { transactions: rows, total: rows.length },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: 'error', message: 'Terjadi kesalahan server.' });
+  }
+};
+
 export {
   adminLogin,
   getAdminStats,
@@ -432,4 +493,6 @@ export {
   createConsultant,
   updateConsultant,
   deleteConsultant,
+  getRevenueSummary,
+  getTransactions,
 };

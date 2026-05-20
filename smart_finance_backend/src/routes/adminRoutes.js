@@ -15,6 +15,8 @@ import {
   updateConsultant,
   deleteConsultant,
   getAdminStats,
+  getRevenueSummary,
+  getTransactions,
 } from '../controllers/adminController.js';
 import { authenticateAdmin } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validator.js';
@@ -53,6 +55,9 @@ router.patch(
 router.post('/bookings/:id/zoom', param('id').isInt(), validate, sendZoomLink);
 
 router.get('/health-checks', getAllHealthChecks);
+
+router.get('/revenue/summary', getRevenueSummary);
+router.get('/transactions', getTransactions);
 
 router.get('/consultants', getAllConsultantsAdmin);
 router.post(
