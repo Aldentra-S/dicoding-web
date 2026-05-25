@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout.jsx';
 import { useApp } from '../context/AppContext.jsx';
@@ -36,7 +36,7 @@ export default function BookingConsultation() {
   const { id } = useParams();
   const location = useLocation();
   const consultant = location.state?.consultant;
-  const { doBooking, getSlots, busy, saveZoomLink } = useApp();
+  const { doBooking, getSlots, busy, API, bookings, refreshAll } = useApp();
 
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -49,9 +49,16 @@ export default function BookingConsultation() {
   const [step, setStep] = useState('booking');
   const [bookingData, setBookingData] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState('');
-  const [paymentDone, setPaymentDone] = useState(false);
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false);
+  const [rejected, setRejected] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+
   const [chatMsg, setChatMsg] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
+  const [zoomLink, setZoomLink] = useState('');
+  const chatBottomRef = useRef(null);
+
+  const pollRef = useRef(null);
 
   const dates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -72,56 +79,208 @@ export default function BookingConsultation() {
   }, [date]);
 
   useEffect(() => {
-    if (step === 'chat' && chatMessages.length === 0) {
-      if (method === 'video_meeting') {
-        const link = `https://zoom.us/j/${Math.floor(Math.random() * 9000000000 + 1000000000)}`;
-        const bookingId = bookingData?.booking?.id ?? bookingData?.id;
-        if (bookingId) {
-          saveZoomLink(bookingId, link);
+    if (chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
+
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const tok = localStorage.getItem('token');
+    if (!tok) return;
+
+    const apiBase = API;
+    const consultantIdInt = parseInt(id);
+
+    const runPoll = (bookingId, bookingMethod) => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const r = await fetch(`${apiBase}/bookings/${bookingId}`, {
+            headers: {
+              Authorization: `Bearer ${tok}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          const d = await r.json();
+          if (d.status !== 'success') return;
+          const bk = d.data?.booking;
+          if (!bk) return;
+
+          if (bk.status === 'rejected' || bk.status === 'cancelled') {
+            clearInterval(pollRef.current);
+            setRejectReason(
+              bk.notes && !bk.notes.startsWith('http')
+                ? bk.notes
+                : 'Booking kamu ditolak oleh admin. Silakan coba booking lagi.',
+            );
+            setPaymentSubmitted(false);
+            setRejected(true);
+          } else if (bk.status === 'booked' || bk.status === 'completed') {
+            clearInterval(pollRef.current);
+            const isVideo = bookingMethod === 'video_meeting';
+            if (isVideo && bk.notes && bk.notes.startsWith('http')) {
+              setZoomLink(bk.notes);
+            }
+            setStep('chat');
+          }
+        } catch {}
+      }, 3000);
+    };
+
+    fetch(`${apiBase}/bookings`, {
+      headers: {
+        Authorization: `Bearer ${tok}`,
+        'Content-Type': 'application/json',
+      },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.status !== 'success') return;
+        const allBookings = d.data?.bookings || [];
+        const bk = allBookings.find(
+          (b) => b.consultant_id === consultantIdInt && b.session_type,
+        );
+        if (!bk) return;
+
+        if (bk.status === 'rejected' || bk.status === 'cancelled') {
+          setBookingData({ booking: bk });
+          setStep('payment');
+          setPaymentSubmitted(false);
+          setRejectReason(
+            bk.notes && !bk.notes.startsWith('http')
+              ? bk.notes
+              : 'Booking kamu ditolak oleh admin. Silakan coba booking lagi.',
+          );
+          setRejected(true);
+        } else if (bk.status === 'pending') {
+          setBookingData({ booking: bk });
+          setStep('payment');
+          setPaymentSubmitted(true);
+          setRejected(false);
+          runPoll(bk.id, bk.consultation_method);
         }
-        setChatMessages([
-          {
-            from: 'system',
-            text: `Pembayaran dikonfirmasi! Konsultasi dengan ${consultant?.name} telah terjadwal.`,
-            time: new Date().toLocaleTimeString('id-ID', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          },
-          {
-            from: 'consultant',
-            name: consultant?.name || 'Konsultan',
-            text: `Halo! Saya ${consultant?.name}. Terima kasih sudah memesan sesi konsultasi. Berikut link Zoom Meeting untuk sesi kita:\n\n🔗 ${link}\n\nSilakan bergabung pada waktu yang sudah dijadwalkan ya: ${date} pukul ${time} WIB. Jika ada pertanyaan sebelum sesi, silakan tanya di sini.`,
-            time: new Date().toLocaleTimeString('id-ID', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-            zoomLink: link,
-          },
-        ]);
-      } else {
-        setChatMessages([
-          {
-            from: 'system',
-            text: `Pembayaran dikonfirmasi! Konsultasi dengan ${consultant?.name} telah terjadwal.`,
-            time: new Date().toLocaleTimeString('id-ID', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          },
-          {
-            from: 'consultant',
-            name: consultant?.name || 'Konsultan',
-            text: `Halo! Saya ${consultant?.name}. Terima kasih sudah memesan sesi konsultasi via chat. Sesi kita dijadwalkan pada ${date} pukul ${time} WIB. Silakan mulai bertanya kapan saja, saya siap membantu! 😊`,
-            time: new Date().toLocaleTimeString('id-ID', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          },
-        ]);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'payment' || !paymentSubmitted || rejected) return;
+    const bookingId = bookingData?.booking?.id ?? bookingData?.id;
+    if (!bookingId) return;
+
+    const bk = bookings.find((b) => b.id === bookingId);
+    if (!bk) return;
+
+    if (bk.status === 'rejected' || bk.status === 'cancelled') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      setRejectReason(
+        bk.notes && !bk.notes.startsWith('http')
+          ? bk.notes
+          : 'Booking kamu ditolak oleh admin. Silakan coba booking lagi.',
+      );
+      setPaymentSubmitted(false);
+      setRejected(true);
+    } else if (bk.status === 'booked' || bk.status === 'completed') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      const isVideo = method === 'video_meeting';
+      if (isVideo && bk.notes && bk.notes.startsWith('http')) {
+        setZoomLink(bk.notes);
+        initChatSession(bk.notes, method);
+        setStep('chat');
+      } else if (!isVideo) {
+        initChatSession(null, method);
+        setStep('chat');
       }
     }
-  }, [step]);
+  }, [bookings, step, paymentSubmitted, rejected]);
+
+  const startPollingConfirmation = (bookingId, bookingMethod) => {
+    const tok = localStorage.getItem('token');
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`${API}/bookings/${bookingId}`, {
+          headers: {
+            Authorization: `Bearer ${tok}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        const d = await r.json();
+        if (d.status === 'success') {
+          const bk = d.data?.booking;
+          if (!bk) return;
+
+          if (bk.status === 'rejected' || bk.status === 'cancelled') {
+            clearInterval(pollRef.current);
+            setRejectReason(
+              bk.notes && !bk.notes.startsWith('http')
+                ? bk.notes
+                : 'Booking kamu ditolak oleh admin. Silakan coba booking lagi.',
+            );
+            setPaymentSubmitted(false);
+            setRejected(true);
+            return;
+          }
+
+          if (bk.status === 'booked' || bk.status === 'completed') {
+            const isVideo = bookingMethod === 'video_meeting';
+            if (isVideo && bk.notes && bk.notes.startsWith('http')) {
+              clearInterval(pollRef.current);
+              setZoomLink(bk.notes);
+              initChatSession(bk.notes, bookingMethod);
+              setStep('chat');
+            } else if (!isVideo) {
+              clearInterval(pollRef.current);
+              initChatSession(null, bookingMethod);
+              setStep('chat');
+            }
+          }
+        }
+      } catch {}
+    }, 3000);
+  };
+
+  const initChatSession = (zLink, bookingMethod) => {
+    const msgs = [
+      {
+        from: 'system',
+        text: `Booking dikonfirmasi oleh admin! Konsultasi dengan ${consultant?.name} telah terjadwal.`,
+        time: new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      },
+    ];
+    if (bookingMethod === 'video_meeting' && zLink) {
+      msgs.push({
+        from: 'consultant',
+        name: consultant?.name || 'Konsultan',
+        text: `Halo! Saya ${consultant?.name}. Terima kasih sudah memesan sesi konsultasi. Berikut link Zoom Meeting untuk sesi kita:\n\n🔗 ${zLink}\n\nSilakan bergabung pada waktu yang sudah dijadwalkan ya: ${date} pukul ${time} WIB. Jika ada pertanyaan sebelum sesi, silakan tanya di sini.`,
+        time: new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        zoomLink: zLink,
+      });
+    } else {
+      msgs.push({
+        from: 'consultant',
+        name: consultant?.name || 'Konsultan',
+        text: `Halo! Saya ${consultant?.name}. Terima kasih sudah memesan sesi konsultasi via chat. Sesi kita dijadwalkan pada ${date} pukul ${time} WIB. Silakan mulai bertanya kapan saja, saya siap membantu! 😊`,
+        time: new Date().toLocaleTimeString('id-ID', {
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      });
+    }
+    setChatMessages(msgs);
+  };
 
   const submitBooking = async () => {
     if (!date || !time) {
@@ -147,10 +306,25 @@ export default function BookingConsultation() {
     }
   };
 
-  const submitPayment = () => {
+  const submitPayment = async () => {
     if (!selectedPayment) return;
-    setPaymentDone(true);
-    setTimeout(() => setStep('chat'), 1800);
+    setPaymentSubmitted(true);
+    setRejected(false);
+    const bookingId = bookingData?.booking?.id ?? bookingData?.id;
+    if (bookingId) {
+      try {
+        const tok = localStorage.getItem('token');
+        await fetch(`${API}/bookings/${bookingId}/payment`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${tok}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ payment_method: selectedPayment }),
+        });
+      } catch {}
+      startPollingConfirmation(bookingId, method);
+    }
   };
 
   const sendChat = () => {
@@ -389,6 +563,7 @@ export default function BookingConsultation() {
                   </div>
                 );
               })}
+              <div ref={chatBottomRef} />
             </div>
 
             <div
@@ -442,6 +617,103 @@ export default function BookingConsultation() {
             >
               Ke Dashboard
             </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (step === 'payment' && rejected) {
+    return (
+      <Layout
+        title="Booking Ditolak"
+        subtitle={consultant ? `Sesi dengan ${consultant.name}` : ''}
+      >
+        <div style={{ maxWidth: 500, margin: '0 auto' }}>
+          <div className="card" style={{ border: '2px solid #fca5a5' }}>
+            <div
+              className="card-body"
+              style={{ textAlign: 'center', padding: '40px 24px' }}
+            >
+              <div style={{ fontSize: 56, marginBottom: 16 }}>❌</div>
+              <p
+                style={{
+                  fontWeight: 700,
+                  fontSize: 18,
+                  marginBottom: 8,
+                  color: '#b91c1c',
+                }}
+              >
+                Booking Ditolak
+              </p>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: 'var(--muted)',
+                  marginBottom: 24,
+                  lineHeight: 1.6,
+                }}
+              >
+                {rejectReason}
+              </p>
+              <div
+                style={{
+                  background: '#fff5f5',
+                  border: '1px solid #fca5a5',
+                  borderRadius: 10,
+                  padding: '12px 16px',
+                  fontSize: 12,
+                  color: '#7f1d1d',
+                  textAlign: 'left',
+                  marginBottom: 24,
+                }}
+              >
+                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                  <span>👤</span>
+                  <span>
+                    Konsultan: <strong>{consultant?.name}</strong>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                  <span>📅</span>
+                  <span>
+                    Jadwal:{' '}
+                    <strong>
+                      {date} pukul {time} WIB
+                    </strong>
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <span>💳</span>
+                  <span>
+                    Metode Bayar:{' '}
+                    <strong>
+                      {PAYMENT_METHODS.find((p) => p.id === selectedPayment)
+                        ?.label || '-'}
+                    </strong>
+                  </span>
+                </div>
+              </div>
+              <button
+                className="btn btn-dark btn-full"
+                onClick={() => {
+                  setRejected(false);
+                  setRejectReason('');
+                  setPaymentSubmitted(false);
+                  setSelectedPayment('');
+                  setStep('booking');
+                }}
+              >
+                Coba Booking Lagi
+              </button>
+              <button
+                className="btn btn-outline btn-full"
+                style={{ marginTop: 8 }}
+                onClick={() => navigate('/consultation')}
+              >
+                Kembali ke Daftar Konsultan
+              </button>
+            </div>
           </div>
         </div>
       </Layout>
@@ -518,110 +790,198 @@ export default function BookingConsultation() {
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-hd">
-              <span className="card-title">Pilih Metode Pembayaran</span>
-            </div>
-            <div
-              className="card-body"
-              style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-            >
-              {PAYMENT_METHODS.map((pm) => (
-                <label
-                  key={pm.id}
-                  onClick={() => setSelectedPayment(pm.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 13,
-                    padding: '13px 15px',
-                    border: `2px solid ${selectedPayment === pm.id ? 'var(--green-2)' : 'var(--border)'}`,
-                    borderRadius: 10,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    background:
-                      selectedPayment === pm.id ? 'var(--green-mist)' : '#fff',
-                  }}
+          {!paymentSubmitted ? (
+            <>
+              <div className="card">
+                <div className="card-hd">
+                  <span className="card-title">Pilih Metode Pembayaran</span>
+                </div>
+                <div
+                  className="card-body"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
                 >
-                  <div
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 9,
-                      background: 'var(--paper)',
-                      border: '1px solid var(--border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 18,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {pm.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13 }}>
-                      {pm.label}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                      {pm.desc}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      border: `2px solid ${selectedPayment === pm.id ? 'var(--green-2)' : 'var(--border)'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {selectedPayment === pm.id && (
+                  {PAYMENT_METHODS.map((pm) => (
+                    <label
+                      key={pm.id}
+                      onClick={() => setSelectedPayment(pm.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 13,
+                        padding: '13px 15px',
+                        border: `2px solid ${selectedPayment === pm.id ? 'var(--green-2)' : 'var(--border)'}`,
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        background:
+                          selectedPayment === pm.id
+                            ? 'var(--green-mist)'
+                            : '#fff',
+                      }}
+                    >
                       <div
                         style={{
-                          width: 9,
-                          height: 9,
-                          borderRadius: '50%',
-                          background: 'var(--green-2)',
+                          width: 36,
+                          height: 36,
+                          borderRadius: 9,
+                          background: 'var(--paper)',
+                          border: '1px solid var(--border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 18,
+                          flexShrink: 0,
                         }}
-                      />
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+                      >
+                        {pm.icon}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>
+                          {pm.label}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>
+                          {pm.desc}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          border: `2px solid ${selectedPayment === pm.id ? 'var(--green-2)' : 'var(--border)'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {selectedPayment === pm.id && (
+                          <div
+                            style={{
+                              width: 9,
+                              height: 9,
+                              borderRadius: '50%',
+                              background: 'var(--green-2)',
+                            }}
+                          />
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
 
-          {paymentDone ? (
-            <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
-              <p style={{ fontWeight: 700, fontSize: 15 }}>
-                Pembayaran Berhasil!
-              </p>
-              <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-                Mengarahkan ke chat konsultasi...
-              </p>
-            </div>
+              <button
+                className="btn btn-dark btn-full"
+                onClick={submitPayment}
+                disabled={!selectedPayment}
+                style={{ marginTop: 4 }}
+              >
+                Konfirmasi Pembayaran
+              </button>
+              <button
+                className="btn btn-outline btn-full"
+                style={{ marginTop: 8 }}
+                onClick={() => setStep('booking')}
+              >
+                Kembali
+              </button>
+            </>
           ) : (
-            <button
-              className="btn btn-dark btn-full"
-              onClick={submitPayment}
-              disabled={!selectedPayment}
-              style={{ marginTop: 4 }}
-            >
-              Bayar Sekarang
-            </button>
+            <div className="card" style={{ marginTop: 16 }}>
+              <div
+                className="card-body"
+                style={{ textAlign: 'center', padding: '32px 20px' }}
+              >
+                <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+                <p
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 16,
+                    marginBottom: 8,
+                    color: 'var(--ink)',
+                  }}
+                >
+                  Menunggu Konfirmasi
+                </p>
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: 'var(--muted)',
+                    marginBottom: 20,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Pembayaran kamu sedang diverifikasi oleh admin.
+                  <br />
+                  Halaman ini akan otomatis berpindah ke sesi konsultasi setelah
+                  admin mengkonfirmasi.
+                </p>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: 6,
+                    marginBottom: 20,
+                  }}
+                >
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        background: 'var(--green-2)',
+                        animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+                        opacity: 0.7,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div
+                  style={{
+                    background: 'var(--green-mist)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    padding: '12px 16px',
+                    fontSize: 12,
+                    color: 'var(--ink-2)',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                    <span>✅</span>
+                    <span>
+                      Metode:{' '}
+                      <strong>
+                        {
+                          PAYMENT_METHODS.find((p) => p.id === selectedPayment)
+                            ?.label
+                        }
+                      </strong>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                    <span>📅</span>
+                    <span>
+                      Jadwal:{' '}
+                      <strong>
+                        {date} pukul {time} WIB
+                      </strong>
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <span>👤</span>
+                    <span>
+                      Konsultan: <strong>{consultant?.name}</strong>
+                    </span>
+                  </div>
+                </div>
+                <style>{`@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }`}</style>
+              </div>
+            </div>
           )}
-          <button
-            className="btn btn-outline btn-full"
-            style={{ marginTop: 8 }}
-            onClick={() => setStep('booking')}
-          >
-            Kembali
-          </button>
         </div>
       </Layout>
     );
@@ -955,8 +1315,8 @@ export default function BookingConsultation() {
               <span>🔒</span>
               <span>
                 {method === 'video_meeting'
-                  ? 'Setelah konfirmasi, kamu akan memilih metode pembayaran lalu diarahkan ke chat & link Zoom.'
-                  : 'Setelah konfirmasi, kamu akan memilih metode pembayaran lalu diarahkan ke sesi chat langsung.'}
+                  ? 'Setelah konfirmasi, kamu akan memilih metode pembayaran. Admin akan memverifikasi dan mengirimkan link Zoom.'
+                  : 'Setelah konfirmasi, kamu akan memilih metode pembayaran lalu admin akan memverifikasi dan membuka sesi chat.'}
               </span>
             </div>
           </div>

@@ -5,9 +5,11 @@ import {
   getUserBookings,
   getBookingById,
   cancelBooking,
+  submitPayment,
 } from '../controllers/bookingController.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validator.js';
+import { getAvailableSlots } from '../controllers/bookingController.js';
 
 const router = express.Router();
 
@@ -44,6 +46,17 @@ router.post(
   ],
   validate,
   createBooking,
+);
+
+router.post(
+  '/:id/payment',
+  [
+    body('payment_method')
+      .notEmpty()
+      .withMessage('Metode pembayaran wajib dipilih.'),
+  ],
+  validate,
+  submitPayment,
 );
 
 router.get('/', getUserBookings);

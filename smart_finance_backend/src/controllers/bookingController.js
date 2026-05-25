@@ -36,17 +36,19 @@ const createBooking = async (req, res) => {
       [consultant_id, booking_date, booking_time],
     );
     if (conflicts.length > 0) {
-      return res.status(409).json({
-        status: 'error',
-        message: 'Jadwal sudah dipesan. Pilih waktu lain.',
-      });
+      return res
+        .status(409)
+        .json({
+          status: 'error',
+          message: 'Jadwal sudah dipesan. Pilih waktu lain.',
+        });
     }
 
     const totalFee = Math.round((consultant.rate / 60) * duration_minutes);
 
     const [result] = await pool.query(
       `INSERT INTO bookings (user_id, consultant_id, health_check_id, booking_date, booking_time, duration_minutes, consultation_method, topic, status, total_fee, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'booked', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
       [
         userId,
         consultant_id,
@@ -69,11 +71,56 @@ const createBooking = async (req, res) => {
 
     return res.status(201).json({
       status: 'success',
-      message: 'Booking berhasil dibuat.',
+      message: 'Booking berhasil dibuat. Silakan selesaikan pembayaran.',
       data: { booking: booking[0] },
     });
   } catch (error) {
     console.error('Create booking error:', error);
+    return res
+      .status(500)
+      .json({ status: 'error', message: 'Terjadi kesalahan server.' });
+  }
+};
+
+const submitPayment = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { payment_method } = req.body;
+
+    const [rows] = await pool.query(
+      'SELECT * FROM bookings WHERE id = ? AND user_id = ?',
+      [id, userId],
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ status: 'error', message: 'Booking tidak ditemukan.' });
+    }
+
+    const booking = rows[0];
+    if (booking.status !== 'pending') {
+      return res
+        .status(400)
+        .json({
+          status: 'error',
+          message: 'Booking tidak dalam status menunggu pembayaran.',
+        });
+    }
+
+    await pool.query(
+      'UPDATE bookings SET session_type = ?, updated_at = NOW() WHERE id = ?',
+      [payment_method, id],
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Pembayaran berhasil dikirim. Menunggu konfirmasi admin.',
+      data: { booking_id: id, payment_method },
+    });
+  } catch (error) {
+    console.error('Submit payment error:', error);
     return res
       .status(500)
       .json({ status: 'error', message: 'Terjadi kesalahan server.' });
@@ -96,10 +143,12 @@ const getUserBookings = async (req, res) => {
     query += ' ORDER BY b.booking_date DESC, b.booking_time DESC';
 
     const [rows] = await pool.query(query, params);
-    return res.status(200).json({
-      status: 'success',
-      data: { total: rows.length, bookings: rows },
-    });
+    return res
+      .status(200)
+      .json({
+        status: 'success',
+        data: { total: rows.length, bookings: rows },
+      });
   } catch (error) {
     console.error('Get bookings error:', error);
     return res
@@ -154,10 +203,12 @@ const cancelBooking = async (req, res) => {
         .status(400)
         .json({ status: 'error', message: 'Booking sudah dibatalkan.' });
     if (rows[0].status === 'completed')
-      return res.status(400).json({
-        status: 'error',
-        message: 'Booking yang sudah selesai tidak dapat dibatalkan.',
-      });
+      return res
+        .status(400)
+        .json({
+          status: 'error',
+          message: 'Booking yang sudah selesai tidak dapat dibatalkan.',
+        });
 
     await pool.query('UPDATE bookings SET status = "cancelled" WHERE id = ?', [
       id,
@@ -193,10 +244,12 @@ const getAvailableSlots = async (req, res) => {
         .json({ status: 'error', message: 'Konsultan tidak ditemukan.' });
 
     if (!consultants[0].is_available) {
-      return res.status(200).json({
-        status: 'success',
-        data: { slots: [], message: 'Konsultan tidak tersedia.' },
-      });
+      return res
+        .status(200)
+        .json({
+          status: 'success',
+          data: { slots: [], message: 'Konsultan tidak tersedia.' },
+        });
     }
 
     const allSlots = [
@@ -222,10 +275,12 @@ const getAvailableSlots = async (req, res) => {
       is_available: !bookedTimes.includes(slot),
     }));
 
-    return res.status(200).json({
-      status: 'success',
-      data: { consultant_id: parseInt(id), date, slots },
-    });
+    return res
+      .status(200)
+      .json({
+        status: 'success',
+        data: { consultant_id: parseInt(id), date, slots },
+      });
   } catch (error) {
     console.error('Get slots error:', error);
     return res
@@ -236,6 +291,7 @@ const getAvailableSlots = async (req, res) => {
 
 export {
   createBooking,
+  submitPayment,
   getUserBookings,
   getBookingById,
   cancelBooking,

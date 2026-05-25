@@ -21,6 +21,7 @@ const rp = (v) => `Rp ${Number(v || 0).toLocaleString('id-ID')}`;
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard' },
   { id: 'users', icon: '👥', label: 'Pengguna' },
+  { id: 'payments', icon: '💳', label: 'Konfirmasi Bayar' },
   { id: 'bookings', icon: '📅', label: 'Booking' },
   { id: 'consultants', icon: '🧑‍💼', label: 'Konsultan' },
   { id: 'health', icon: '💚', label: 'Health Checks' },
@@ -298,6 +299,8 @@ export default function AdminPanel() {
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [delConfirm, setDelConfirm] = useState(null);
+  const [pendingPayments, setPendingPayments] = useState([]);
+  const [confirmingPayment, setConfirmingPayment] = useState(null);
 
   const showToast = (msg, type = 'ok') => {
     setToast({ msg, type });
@@ -367,6 +370,36 @@ export default function AdminPanel() {
     } catch {}
   }, [tok]);
 
+  const fetchPendingPayments = useCallback(async () => {
+    try {
+      const d = await apiFetch('/bookings/pending-payments', tok);
+      if (d.status === 'success') setPendingPayments(d.data.bookings || []);
+    } catch {}
+  }, [tok]);
+
+  const handleConfirmPayment = async (bookingId, zoomLink) => {
+    setConfirmingPayment(bookingId);
+    try {
+      const d = await apiFetch(`/bookings/${bookingId}/confirm-payment`, tok, {
+        method: 'POST',
+        body: { zoom_link: zoomLink || '' },
+      });
+      if (d.status === 'success') {
+        showToast('Pembayaran dikonfirmasi! Sesi konsultasi telah diaktifkan.');
+        await Promise.allSettled([
+          fetchPendingPayments(),
+          fetchBookings(),
+          fetchStats(),
+        ]);
+      } else {
+        showToast(d.message || 'Gagal mengkonfirmasi.', 'err');
+      }
+    } catch {
+      showToast('Gagal terhubung ke server.', 'err');
+    }
+    setConfirmingPayment(null);
+  };
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
     await Promise.allSettled([
@@ -375,9 +408,17 @@ export default function AdminPanel() {
       fetchBookings(),
       fetchConsultants(),
       fetchHealth(),
+      fetchPendingPayments(),
     ]);
     setLoading(false);
-  }, [fetchStats, fetchUsers, fetchBookings, fetchConsultants, fetchHealth]);
+  }, [
+    fetchStats,
+    fetchUsers,
+    fetchBookings,
+    fetchConsultants,
+    fetchHealth,
+    fetchPendingPayments,
+  ]);
 
   useEffect(() => {
     if (authed) fetchAll();
@@ -425,6 +466,29 @@ export default function AdminPanel() {
     setSaving(false);
   };
 
+  const handleRejectBooking = async (bookingId, reason) => {
+    try {
+      const d = await apiFetch(`/bookings/${bookingId}/reject`, tok, {
+        method: 'POST',
+        body: {
+          reason:
+            reason ||
+            'Booking kamu ditolak oleh admin. Silakan coba booking lagi dengan waktu atau konsultan yang berbeda.',
+        },
+      });
+      if (d.status === 'success') {
+        showToast('Booking berhasil ditolak.');
+        await Promise.allSettled([
+          fetchPendingPayments(),
+          fetchBookings(),
+          fetchStats(),
+        ]);
+      } else showToast(d.message || 'Gagal menolak booking.', 'err');
+    } catch {
+      showToast('Gagal terhubung ke server.', 'err');
+    }
+  };
+
   const handleUpdateBkStatus = async (id, status) => {
     try {
       const d = await apiFetch(`/bookings/${id}/status`, tok, {
@@ -433,7 +497,7 @@ export default function AdminPanel() {
       });
       if (d.status === 'success') {
         showToast('Status booking diperbarui.');
-        await fetchBookings();
+        await Promise.allSettled([fetchBookings(), fetchPendingPayments()]);
         closeModal();
       } else showToast(d.message, 'err');
     } catch {
@@ -824,6 +888,21 @@ export default function AdminPanel() {
             >
               <span style={{ fontSize: 15 }}>{item.icon}</span>
               {item.label}
+              {item.id === 'payments' && pendingPayments.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    background: '#ef4444',
+                    color: '#fff',
+                    borderRadius: 10,
+                    padding: '1px 7px',
+                    fontSize: 10,
+                    fontWeight: 800,
+                  }}
+                >
+                  {pendingPayments.length}
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -993,22 +1072,33 @@ export default function AdminPanel() {
                   ],
                   [
                     '⏳',
-                    'Booking Pending',
-                    pendingCount,
+                    'Pembayaran Pending',
+                    pendingPayments.length,
                     'Perlu konfirmasi',
                     '#d97706',
                   ],
                 ].map(([ic, lbl, val, sub, col]) => (
                   <div
                     key={lbl}
+                    onClick={() =>
+                      lbl === 'Pembayaran Pending'
+                        ? setPage('payments')
+                        : undefined
+                    }
                     style={{
                       background: '#fff',
-                      border: '1px solid var(--border)',
+                      border:
+                        lbl === 'Pembayaran Pending' &&
+                        pendingPayments.length > 0
+                          ? '2px solid #fbbf24'
+                          : '1px solid var(--border)',
                       borderRadius: 12,
                       padding: '16px 18px',
                       display: 'flex',
                       gap: 12,
                       alignItems: 'center',
+                      cursor:
+                        lbl === 'Pembayaran Pending' ? 'pointer' : 'default',
                     }}
                   >
                     <div
@@ -1414,6 +1504,228 @@ export default function AdminPanel() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {page === 'payments' && (
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
+                    Konfirmasi Pembayaran
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--muted)',
+                      marginTop: 3,
+                    }}
+                  >
+                    Pembayaran dari pengguna yang menunggu verifikasi admin
+                  </p>
+                </div>
+              </div>
+
+              {pendingPayments.length === 0 ? (
+                <div
+                  style={{
+                    background: '#fff',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    padding: '40px 20px',
+                    textAlign: 'center',
+                    color: 'var(--muted)',
+                  }}
+                >
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                  <p style={{ fontSize: 14, fontWeight: 600 }}>
+                    Tidak ada pembayaran yang menunggu konfirmasi
+                  </p>
+                  <p style={{ fontSize: 12, marginTop: 4 }}>
+                    Semua pembayaran sudah diproses
+                  </p>
+                </div>
+              ) : (
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+                >
+                  {pendingPayments.map((b) => (
+                    <div
+                      key={b.id}
+                      style={{
+                        background: '#fff',
+                        border: '2px solid #fef3c7',
+                        borderRadius: 12,
+                        padding: '18px 20px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          gap: 12,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 200 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              marginBottom: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                background: '#fef3c7',
+                                color: '#854d0e',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                borderRadius: 6,
+                                padding: '3px 8px',
+                              }}
+                            >
+                              ⏳ MENUNGGU KONFIRMASI
+                            </span>
+                            <span
+                              style={{ fontSize: 11, color: 'var(--muted)' }}
+                            >
+                              Booking #{b.id}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 14,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {b.user_name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--muted)',
+                              marginBottom: 8,
+                            }}
+                          >
+                            {b.user_email}
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 16,
+                              flexWrap: 'wrap',
+                              fontSize: 12,
+                            }}
+                          >
+                            <span>
+                              🧑‍💼 <strong>{b.consultant_name}</strong>
+                            </span>
+                            <span>
+                              📅 <strong>{b.booking_date}</strong>
+                            </span>
+                            <span>
+                              🕐 <strong>{b.booking_time} WIB</strong>
+                            </span>
+                            <span>
+                              {b.consultation_method === 'video_meeting'
+                                ? '📹 Video Meeting'
+                                : '💬 Chat'}
+                            </span>
+                          </div>
+                          {b.session_type && (
+                            <div style={{ marginTop: 8, fontSize: 12 }}>
+                              💳 Metode Bayar: <strong>{b.session_type}</strong>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 20,
+                              fontWeight: 800,
+                              color: 'var(--ink)',
+                              marginBottom: 4,
+                            }}
+                          >
+                            {rp(b.total_fee)}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--muted)',
+                              marginBottom: 12,
+                            }}
+                          >
+                            Total biaya
+                          </div>
+                          <button
+                            onClick={() =>
+                              handleConfirmPayment(
+                                b.id,
+                                b.consultation_method === 'video_meeting'
+                                  ? `https://zoom.us/j/${Math.floor(Math.random() * 9000000000 + 1000000000)}`
+                                  : null,
+                              )
+                            }
+                            disabled={confirmingPayment === b.id}
+                            style={{
+                              background:
+                                confirmingPayment === b.id
+                                  ? '#d1d5db'
+                                  : '#16a34a',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 9,
+                              padding: '10px 20px',
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor:
+                                confirmingPayment === b.id
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              whiteSpace: 'nowrap',
+                              display: 'block',
+                              width: '100%',
+                            }}
+                          >
+                            {confirmingPayment === b.id
+                              ? '⏳ Memproses...'
+                              : '✅ Konfirmasi Pembayaran'}
+                          </button>
+                          <button
+                            onClick={() => handleRejectBooking(b.id)}
+                            style={{
+                              marginTop: 6,
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #fca5a5',
+                              borderRadius: 9,
+                              padding: '7px 20px',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              width: '100%',
+                            }}
+                          >
+                            ✗ Tolak Booking
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

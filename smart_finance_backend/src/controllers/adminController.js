@@ -46,7 +46,7 @@ const getAdminStats = async (req, res) => {
       "SELECT COALESCE(SUM(total_fee),0) as revenue FROM bookings WHERE status = 'completed'",
     );
     const [[{ pending }]] = await pool.query(
-      "SELECT COUNT(*) as pending FROM bookings WHERE status = 'booked'",
+      "SELECT COUNT(*) as pending FROM bookings WHERE status = 'pending'",
     );
     return res.status(200).json({
       status: 'success',
@@ -133,13 +133,11 @@ const updateUser = async (req, res) => {
       'SELECT id, name, email, phone, photo_url, created_at FROM users WHERE id = ?',
       [req.params.id],
     );
-    return res
-      .status(200)
-      .json({
-        status: 'success',
-        message: 'User berhasil diperbarui.',
-        data: { user: updated[0] },
-      });
+    return res.status(200).json({
+      status: 'success',
+      message: 'User berhasil diperbarui.',
+      data: { user: updated[0] },
+    });
   } catch (error) {
     return res
       .status(500)
@@ -209,10 +207,112 @@ const getAllBookingsAdmin = async (req, res) => {
   }
 };
 
+const getPendingPayments = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT b.*, u.name as user_name, u.email as user_email,
+        c.name as consultant_name, c.specialization
+       FROM bookings b
+       JOIN users u ON b.user_id = u.id
+       JOIN consultants c ON b.consultant_id = c.id
+       WHERE b.status = 'pending'
+       ORDER BY b.created_at DESC`,
+    );
+    return res.status(200).json({
+      status: 'success',
+      data: { bookings: rows, total: rows.length },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: 'error', message: 'Terjadi kesalahan server.' });
+  }
+};
+
+const confirmPayment = async (req, res) => {
+  try {
+    const { zoom_link } = req.body;
+    const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [
+      req.params.id,
+    ]);
+    if (rows.length === 0)
+      return res
+        .status(404)
+        .json({ status: 'error', message: 'Booking tidak ditemukan.' });
+
+    const booking = rows[0];
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Booking bukan dalam status pending.',
+      });
+    }
+
+    const isVideo = booking.consultation_method === 'video_meeting';
+    const zoomLinkToSave = isVideo
+      ? zoom_link ||
+        `https://zoom.us/j/${Math.floor(Math.random() * 9000000000 + 1000000000)}`
+      : null;
+
+    await pool.query(
+      'UPDATE bookings SET status = ?, notes = ?, updated_at = NOW() WHERE id = ?',
+      ['booked', zoomLinkToSave, req.params.id],
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Pembayaran dikonfirmasi. Sesi konsultasi telah diaktifkan.',
+      data: { booking_id: req.params.id, zoom_link: zoomLinkToSave },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: 'error', message: 'Terjadi kesalahan server.' });
+  }
+};
+
+const rejectBooking = async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [
+      req.params.id,
+    ]);
+    if (rows.length === 0)
+      return res
+        .status(404)
+        .json({ status: 'error', message: 'Booking tidak ditemukan.' });
+
+    const booking = rows[0];
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Booking bukan dalam status pending.',
+      });
+    }
+
+    const rejectReason = reason || 'Ditolak oleh admin.';
+
+    await pool.query(
+      'UPDATE bookings SET status = ?, notes = ?, updated_at = NOW() WHERE id = ?',
+      ['rejected', rejectReason, req.params.id],
+    );
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Booking berhasil ditolak.',
+      data: { booking_id: req.params.id, reason: rejectReason },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: 'error', message: 'Terjadi kesalahan server.' });
+  }
+};
+
 const updateBookingStatus = async (req, res) => {
   try {
-    const { status } = req.body;
-    const allowed = ['booked', 'completed', 'cancelled', 'pending'];
+    const { status, notes } = req.body;
+    const allowed = ['booked', 'completed', 'cancelled', 'pending', 'rejected'];
     if (!allowed.includes(status))
       return res
         .status(400)
@@ -224,10 +324,19 @@ const updateBookingStatus = async (req, res) => {
       return res
         .status(404)
         .json({ status: 'error', message: 'Booking tidak ditemukan.' });
-    await pool.query('UPDATE bookings SET status = ? WHERE id = ?', [
-      status,
-      req.params.id,
-    ]);
+
+    if (notes !== undefined) {
+      await pool.query(
+        'UPDATE bookings SET status = ?, notes = ?, updated_at = NOW() WHERE id = ?',
+        [status, notes, req.params.id],
+      );
+    } else {
+      await pool.query(
+        'UPDATE bookings SET status = ?, updated_at = NOW() WHERE id = ?',
+        [status, req.params.id],
+      );
+    }
+
     return res
       .status(200)
       .json({ status: 'success', message: 'Status booking diperbarui.' });
@@ -327,13 +436,11 @@ const createConsultant = async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM consultants WHERE id = ?', [
       result.insertId,
     ]);
-    return res
-      .status(201)
-      .json({
-        status: 'success',
-        message: 'Konsultan berhasil ditambahkan.',
-        data: { consultant: rows[0] },
-      });
+    return res.status(201).json({
+      status: 'success',
+      message: 'Konsultan berhasil ditambahkan.',
+      data: { consultant: rows[0] },
+    });
   } catch (error) {
     return res
       .status(500)
@@ -383,13 +490,11 @@ const updateConsultant = async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM consultants WHERE id = ?', [
       req.params.id,
     ]);
-    return res
-      .status(200)
-      .json({
-        status: 'success',
-        message: 'Konsultan berhasil diperbarui.',
-        data: { consultant: rows[0] },
-      });
+    return res.status(200).json({
+      status: 'success',
+      message: 'Konsultan berhasil diperbarui.',
+      data: { consultant: rows[0] },
+    });
   } catch (error) {
     return res
       .status(500)
@@ -420,27 +525,18 @@ const deleteConsultant = async (req, res) => {
 const getRevenueSummary = async (req, res) => {
   try {
     const [[{ today }]] = await pool.query(
-      `SELECT COALESCE(SUM(total_fee), 0) as today
-       FROM bookings
-       WHERE DATE(updated_at) = CURDATE() AND status = 'completed'`,
+      `SELECT COALESCE(SUM(total_fee), 0) as today FROM bookings WHERE DATE(updated_at) = CURDATE() AND status = 'completed'`,
     );
     const [[{ this_week }]] = await pool.query(
-      `SELECT COALESCE(SUM(total_fee), 0) as this_week
-       FROM bookings
-       WHERE YEARWEEK(updated_at, 1) = YEARWEEK(NOW(), 1) AND status = 'completed'`,
+      `SELECT COALESCE(SUM(total_fee), 0) as this_week FROM bookings WHERE YEARWEEK(updated_at, 1) = YEARWEEK(NOW(), 1) AND status = 'completed'`,
     );
     const [[{ this_month }]] = await pool.query(
-      `SELECT COALESCE(SUM(total_fee), 0) as this_month
-       FROM bookings
-       WHERE MONTH(updated_at) = MONTH(NOW()) AND YEAR(updated_at) = YEAR(NOW()) AND status = 'completed'`,
+      `SELECT COALESCE(SUM(total_fee), 0) as this_month FROM bookings WHERE MONTH(updated_at) = MONTH(NOW()) AND YEAR(updated_at) = YEAR(NOW()) AND status = 'completed'`,
     );
     const [by_consultant] = await pool.query(
       `SELECT c.name, COUNT(*) as sessions, COALESCE(SUM(b.total_fee), 0) as total
-       FROM bookings b
-       JOIN consultants c ON b.consultant_id = c.id
-       WHERE b.status = 'completed'
-       GROUP BY c.id, c.name
-       ORDER BY total DESC`,
+       FROM bookings b JOIN consultants c ON b.consultant_id = c.id WHERE b.status = 'completed'
+       GROUP BY c.id, c.name ORDER BY total DESC`,
     );
     return res.status(200).json({
       status: 'success',
@@ -486,6 +582,9 @@ export {
   updateUser,
   deleteUser,
   getAllBookingsAdmin,
+  getPendingPayments,
+  confirmPayment,
+  rejectBooking,
   updateBookingStatus,
   sendZoomLink,
   getAllHealthChecks,

@@ -7,6 +7,9 @@ import {
   updateUser,
   deleteUser,
   getAllBookingsAdmin,
+  getPendingPayments,
+  confirmPayment,
+  rejectBooking,
   updateBookingStatus,
   sendZoomLink,
   getAllHealthChecks,
@@ -46,6 +49,19 @@ router.patch('/users/:id', param('id').isInt(), validate, updateUser);
 router.delete('/users/:id', param('id').isInt(), validate, deleteUser);
 
 router.get('/bookings', getAllBookingsAdmin);
+router.get('/bookings/pending-payments', getPendingPayments);
+router.post(
+  '/bookings/:id/confirm-payment',
+  param('id').isInt(),
+  validate,
+  confirmPayment,
+);
+router.post(
+  '/bookings/:id/reject',
+  param('id').isInt(),
+  validate,
+  rejectBooking,
+);
 router.patch(
   '/bookings/:id/status',
   param('id').isInt(),

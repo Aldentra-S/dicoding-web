@@ -21,6 +21,23 @@ const NAV = [
     ),
   },
   {
+    label: 'Akumulasi Keuangan',
+    path: '/akumulasi-keuangan',
+    icon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      >
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" />
+        <circle cx="7" cy="15" r="1.5" fill="currentColor" stroke="none" />
+        <path d="M11 15h6" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: 'Financial Health',
     path: '/financial-health',
     icon: (
@@ -105,7 +122,7 @@ export default function Layout({ title, subtitle, children }) {
         .slice(0, 2)
         .toUpperCase()
     : 'SF';
-  const activeBk = bookings.filter((b) => b.status === 'booked').length;
+  const activeBk = bookings?.filter((b) => b.status === 'booked').length || 0;
   const scColor =
     lastHC?.status === 'Sehat'
       ? '#7fbf96'

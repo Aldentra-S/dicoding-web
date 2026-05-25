@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PieChart,
@@ -11,114 +11,201 @@ import {
 import Layout from '../components/Layout.jsx';
 import { useApp } from '../context/AppContext.jsx';
 
-const rp = (v) => `Rp ${Number(v).toLocaleString('id-ID')}`;
 const PIE_C = ['#b91c1c', '#d97706', '#2d7a52'];
+
+const BULAN_ID = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
+
+const rp = (v) =>
+  new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(v || 0);
 
 export default function FinancialHealth() {
   const navigate = useNavigate();
-  const { healthHistory, doHealthCheck, busy } = useApp();
+  const { healthHistory, doHealthCheck, busy, akumulasi } = useApp();
   const [tab, setTab] = useState('form');
-  const [period, setPeriod] = useState('monthly');
   const [result, setResult] = useState(null);
   const [err, setErr] = useState('');
-  const [form, setForm] = useState({
-    monthly_income: '',
-    monthly_expenses: '',
-    monthly_debt_payment: '',
-    emergency_fund: '',
+  const [hasChecked, setHasChecked] = useState(false);
+
+  const dataLogs = akumulasi?.data?.logs || akumulasi?.logs || [];
+
+  const now = new Date();
+
+  const formatDateVal = (d) => {
+    if (!d) return '';
+    // Gunakan waktu lokal, bukan UTC, supaya tanggal tidak geser
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+
+  const formatDateLabel = (d) => {
+    if (!d) return '';
+    return d.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  // Bangun date options dari log yang ada, mulai dari hari pertama log sampai hari ini
+  const logsUrutTanggal = [...dataLogs].sort(
+    (a, b) => new Date(a.created_at) - new Date(b.created_at),
+  );
+  const tanggalPertama =
+    logsUrutTanggal.length > 0 ? new Date(logsUrutTanggal[0].created_at) : null;
+
+  const buildDateOptions = () => {
+    if (!tanggalPertama) return [];
+    const options = [];
+    const start = new Date(tanggalPertama);
+    start.setHours(0, 0, 0, 0);
+    const maxEnd = new Date(start);
+    maxEnd.setDate(maxEnd.getDate() + 30);
+    const end = maxEnd > now ? now : maxEnd;
+    let cur = new Date(start);
+    while (cur <= end) {
+      options.push(new Date(cur));
+      cur.setDate(cur.getDate() + 1);
+    }
+    return options;
+  };
+
+  const dateOptions = buildDateOptions();
+
+  // Default tanggal: hari pertama log s/d hari ini (bukan dari useEffect yang bisa race)
+  const defaultTglAwal =
+    dateOptions.length > 0 ? formatDateVal(dateOptions[0]) : '';
+  const defaultTglAkhir =
+    dateOptions.length > 0
+      ? formatDateVal(dateOptions[Math.min(dateOptions.length - 1, 29)])
+      : '';
+
+  const [tglAwal, setTglAwal] = useState('');
+  const [tglAkhir, setTglAkhir] = useState('');
+
+  // Set tanggal default sekali saat dateOptions tersedia
+  useEffect(() => {
+    if (dateOptions.length > 0 && !tglAwal) {
+      setTglAwal(defaultTglAwal);
+      setTglAkhir(defaultTglAkhir);
+    }
+  }, [dateOptions.length]);
+
+  const activeTglAwal = tglAwal || defaultTglAwal;
+  const activeTglAkhir = tglAkhir || defaultTglAkhir;
+
+  const tglAwalObj = activeTglAwal
+    ? new Date(activeTglAwal + 'T00:00:00')
+    : null;
+  const tglAkhirObj = activeTglAkhir
+    ? new Date(activeTglAkhir + 'T23:59:59')
+    : null;
+
+  const logsFiltered = dataLogs.filter((l) => {
+    const d = new Date(l.created_at);
+    if (tglAwalObj && d < tglAwalObj) return false;
+    if (tglAkhirObj && d > tglAkhirObj) return false;
+    return true;
   });
 
-  const handlePeriodChange = (targetPeriod) => {
-    if (period === targetPeriod) return;
+  const totalPendapatan = logsFiltered.reduce(
+    (s, l) => s + Number(l.monthly_income || 0),
+    0,
+  );
+  const totalPengeluaran = logsFiltered.reduce(
+    (s, l) => s + Number(l.monthly_expenses || 0),
+    0,
+  );
+  const totalCicilan = logsFiltered.reduce(
+    (s, l) => s + Number(l.monthly_debt_payment || 0),
+    0,
+  );
+  const totalDana = logsFiltered.reduce(
+    (s, l) => s + Number(l.emergency_fund || 0),
+    0,
+  );
 
-    setForm((prev) => {
-      let income =
-        prev.monthly_income === '' ? '' : Number(prev.monthly_income);
-      let expenses =
-        prev.monthly_expenses === '' ? '' : Number(prev.monthly_expenses);
-      let debt =
-        prev.monthly_debt_payment === ''
-          ? ''
-          : Number(prev.monthly_debt_payment);
-      const emergency = prev.emergency_fund;
+  const sisaBersih = totalPendapatan - totalPengeluaran - totalCicilan;
 
-      if (income !== '' || expenses !== '' || debt !== '') {
-        let monthlyIncome = 0;
-        let monthlyExpenses = 0;
-        let monthlyDebt = 0;
+  const labelPeriode =
+    activeTglAwal && activeTglAkhir
+      ? `${formatDateLabel(tglAwalObj)} – ${formatDateLabel(tglAkhirObj)}`
+      : `${BULAN_ID[now.getMonth()]} ${now.getFullYear()}`;
 
-        if (period === 'daily') {
-          monthlyIncome = income * 30;
-          monthlyExpenses = expenses * 30;
-          monthlyDebt = debt * 30;
-        } else if (period === 'weekly') {
-          monthlyIncome = income * 4;
-          monthlyExpenses = expenses * 4;
-          monthlyDebt = debt * 4;
-        } else {
-          monthlyIncome = income;
-          monthlyExpenses = expenses;
-          monthlyDebt = debt;
-        }
+  // Form langsung sinkron dengan total dari filter — tidak perlu useEffect terpisah
+  const form = {
+    monthly_income: totalPendapatan,
+    monthly_expenses: totalPengeluaran,
+    monthly_debt_payment: totalCicilan,
+    emergency_fund: totalDana,
+  };
 
-        if (targetPeriod === 'daily') {
-          income = monthlyIncome / 30;
-          expenses = monthlyExpenses / 30;
-          debt = monthlyDebt / 30;
-        } else if (targetPeriod === 'weekly') {
-          income = monthlyIncome / 4;
-          expenses = monthlyExpenses / 4;
-          debt = monthlyDebt / 4;
-        } else {
-          income = monthlyIncome;
-          expenses = monthlyExpenses;
-          debt = monthlyDebt;
-        }
-      }
+  // State untuk override manual oleh user
+  const [formOverride, setFormOverride] = useState(null);
+  const activeForm = formOverride || form;
 
-      return {
-        monthly_income: income === '' ? '' : Math.round(income),
-        monthly_expenses: expenses === '' ? '' : Math.round(expenses),
-        monthly_debt_payment: debt === '' ? '' : Math.round(debt),
-        emergency_fund: emergency,
-      };
-    });
+  const setFormField = (key, value) => {
+    setFormOverride((prev) => ({
+      ...(prev || form),
+      [key]: value === '' ? '' : Number(value),
+    }));
+  };
 
-    setPeriod(targetPeriod);
+  // Reset override kalau periode berubah
+  const handleChangeTglAwal = (val) => {
+    setTglAwal(val);
+    setFormOverride(null);
+    setHasChecked(false);
+  };
+  const handleChangeTglAkhir = (val) => {
+    setTglAkhir(val);
+    setFormOverride(null);
+    setHasChecked(false);
   };
 
   const submit = async () => {
     setErr('');
     try {
-      let income = Number(form.monthly_income) || 0;
-      let expenses = Number(form.monthly_expenses) || 0;
-      let debt = Number(form.monthly_debt_payment) || 0;
-
-      if (period === 'daily') {
-        income = income * 30;
-        expenses = expenses * 30;
-        debt = debt * 30;
-      } else if (period === 'weekly') {
-        income = income * 4;
-        expenses = expenses * 4;
-        debt = debt * 4;
-      }
-
       const payload = {
-        monthly_income: income,
-        monthly_expenses: expenses,
-        monthly_debt_payment: debt,
-        emergency_fund: Number(form.emergency_fund) || 0,
+        monthly_income: Number(activeForm.monthly_income) || 0,
+        monthly_expenses: Number(activeForm.monthly_expenses) || 0,
+        monthly_debt_payment: Number(activeForm.monthly_debt_payment) || 0,
+        emergency_fund: Number(activeForm.emergency_fund) || 0,
       };
 
       const d = await doHealthCheck(payload);
       if (d.status === 'success') {
         setResult(d.data.result);
         setTab('result');
+        setHasChecked(true);
       } else setErr(d.message || 'Gagal menghitung.');
     } catch {
       setErr('Gagal terhubung ke server.');
     }
+  };
+
+  const handleHitungUlang = () => {
+    setFormOverride(null);
+    setHasChecked(false);
+    setTab('form');
   };
 
   const disp = result || (healthHistory.length > 0 ? healthHistory[0] : null);
@@ -167,13 +254,6 @@ export default function FinancialHealth() {
 
   const rekom = (disp?.recommendation || '').split('\n\n').filter(Boolean);
 
-  const getLabel = (lbl) => {
-    if (lbl === 'Dana Darurat Dimiliki') return lbl;
-    if (period === 'daily') return `${lbl} Harian`;
-    if (period === 'weekly') return `${lbl} Mingguan`;
-    return `${lbl} Bulanan`;
-  };
-
   return (
     <Layout
       title="Financial Health Check"
@@ -199,84 +279,200 @@ export default function FinancialHealth() {
       {tab === 'form' && (
         <div className="grid-1-1" style={{ alignItems: 'start' }}>
           <div className="card">
-            <div
-              className="card-hd"
-              style={{
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: '12px',
-              }}
-            >
+            <div className="card-hd">
               <span className="card-title">Data Keuangan Anda</span>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '6px',
-                  background: '#f3f4f6',
-                  padding: '4px',
-                  borderRadius: '8px',
-                }}
-              >
-                {[
-                  ['daily', 'Harian'],
-                  ['weekly', 'Mingguan'],
-                  ['monthly', 'Bulanan'],
-                ].map(([p, label]) => (
-                  <button
-                    key={p}
-                    onClick={() => handlePeriodChange(p)}
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      background: period === p ? '#ffffff' : 'transparent',
-                      color: period === p ? 'var(--ink, #111827)' : '#6b7280',
-                      boxShadow:
-                        period === p ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
             </div>
             <div className="card-body">
               {err && <div className="alert alert-err">{err}</div>}
+
+              {dataLogs.length > 0 && (
+                <div
+                  style={{
+                    marginBottom: 18,
+                    padding: '14px 16px',
+                    background: 'var(--green-bg)',
+                    borderRadius: 10,
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: 'var(--ink)',
+                      marginBottom: 12,
+                    }}
+                  >
+                    Ringkasan dari Akumulasi Keuangan
+                  </div>
+
+                  {dateOptions.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: 'var(--muted)',
+                          marginBottom: 8,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        Pilih Periode Penghitungan
+                      </div>
+                      <div
+                        style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}
+                      >
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <label
+                            style={{
+                              display: 'block',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: 'var(--muted)',
+                              marginBottom: 5,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            Tanggal Awal
+                          </label>
+                          <select
+                            value={tglAwal}
+                            onChange={(e) =>
+                              handleChangeTglAwal(e.target.value)
+                            }
+                            style={{
+                              width: '100%',
+                              padding: '9px 12px',
+                              borderRadius: 'var(--r8)',
+                              border: '1px solid var(--border)',
+                              background: 'var(--white)',
+                              color: 'var(--ink)',
+                              fontSize: 13,
+                            }}
+                          >
+                            {dateOptions.map((d) => (
+                              <option
+                                key={formatDateVal(d)}
+                                value={formatDateVal(d)}
+                              >
+                                {formatDateLabel(d)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <label
+                            style={{
+                              display: 'block',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: 'var(--muted)',
+                              marginBottom: 5,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            Tanggal Akhir
+                          </label>
+                          <select
+                            value={tglAkhir}
+                            onChange={(e) =>
+                              handleChangeTglAkhir(e.target.value)
+                            }
+                            style={{
+                              width: '100%',
+                              padding: '9px 12px',
+                              borderRadius: 'var(--r8)',
+                              border: '1px solid var(--border)',
+                              background: 'var(--white)',
+                              color: 'var(--ink)',
+                              fontSize: 13,
+                            }}
+                          >
+                            {dateOptions
+                              .filter((d) => {
+                                if (!tglAwal) return true;
+                                const awal = new Date(tglAwal + 'T00:00:00');
+                                const maxAkhir = new Date(awal);
+                                maxAkhir.setDate(maxAkhir.getDate() + 30);
+                                return d >= awal && d <= maxAkhir;
+                              })
+                              .map((d) => (
+                                <option
+                                  key={formatDateVal(d)}
+                                  value={formatDateVal(d)}
+                                >
+                                  {formatDateLabel(d)}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      padding: '6px 10px',
+                      background: 'rgba(45,122,82,0.1)',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      color: 'var(--green-2)',
+                      fontWeight: 600,
+                      display: 'inline-block',
+                    }}
+                  >
+                    📅 {labelPeriode} · {logsFiltered.length} hari data
+                  </div>
+                </div>
+              )}
+
               <div
+                className="fh-form-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
                   gap: '0 14px',
                 }}
-                className="fh-form-grid"
               >
                 {[
-                  ['Pendapatan', 'monthly_income'],
-                  ['Pengeluaran', 'monthly_expenses'],
-                  ['Cicilan / Hutang', 'monthly_debt_payment'],
-                  ['Dana Darurat Dimiliki', 'emergency_fund'],
-                ].map(([lbl, key]) => (
+                  ['Pendapatan', 'monthly_income', 'Nominal Pendapatan'],
+                  ['Pengeluaran', 'monthly_expenses', 'Nominal Pengeluaran'],
+                  [
+                    'Cicilan / Hutang',
+                    'monthly_debt_payment',
+                    'Nominal Cicilan',
+                  ],
+                  [
+                    'Dana Darurat Dimiliki',
+                    'emergency_fund',
+                    'Total akumulasi dana darurat',
+                  ],
+                ].map(([lbl, key, placeholder]) => (
                   <div className="fg" key={key}>
-                    <label>{getLabel(lbl)}</label>
+                    <label>
+                      {lbl}
+                      {tglAwal && tglAkhir && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: 'var(--muted)',
+                            fontWeight: 400,
+                            marginLeft: 4,
+                          }}
+                        >
+                          ({formatDateLabel(tglAwalObj)} –{' '}
+                          {formatDateLabel(tglAkhirObj)})
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="number"
-                      value={form[key]}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          [key]:
-                            e.target.value === '' ? '' : Number(e.target.value),
-                        })
-                      }
-                      placeholder={
-                        key === 'emergency_fund'
-                          ? 'Total akumulasi dana darurat'
-                          : `Nominal ${lbl}`
-                      }
+                      value={activeForm[key]}
+                      onChange={(e) => setFormField(key, e.target.value)}
+                      placeholder={placeholder}
                       style={{
                         width: '100%',
                         padding: '10px 14px',
@@ -312,8 +508,9 @@ export default function FinancialHealth() {
                   marginTop: 9,
                 }}
               >
-                Hasil otomatis dikonversi ke data bulanan untuk sinkronisasi
-                Dashboard &amp; Profil
+                {dateOptions.length > 0
+                  ? `Data diambil dari akumulasi harian periode ${labelPeriode}.`
+                  : 'Masukkan estimasi data dalam hitungan 1 bulan penuh untuk diagnosis yang presisi.'}
               </p>
             </div>
           </div>
@@ -349,8 +546,8 @@ export default function FinancialHealth() {
                   }}
                 >
                   Sistem menganalisis 3 indikator utama (DTI, EIR, dan Dana
-                  Darurat) berdasarkan standarisasi finansial bulanan untuk
-                  hasil diagnosis yang presisi.
+                  Darurat) berdasarkan standarisasi finansial untuk hasil
+                  diagnosis yang presisi.
                 </p>
               </div>
             </div>
@@ -510,6 +707,89 @@ export default function FinancialHealth() {
                     </div>
                   </div>
                 ))}
+
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: '12px 14px',
+                    background: 'var(--green-bg)',
+                    borderRadius: 10,
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: 'var(--green-2)',
+                      marginBottom: 8,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    📅 {labelPeriode}
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 6,
+                    }}
+                  >
+                    {[
+                      [
+                        'Pendapatan',
+                        rp(Number(disp.monthly_income) || totalPendapatan),
+                        'var(--green-2)',
+                      ],
+                      [
+                        'Pengeluaran',
+                        rp(Number(disp.monthly_expenses) || totalPengeluaran),
+                        'var(--amber)',
+                      ],
+                      [
+                        'Cicilan/Hutang',
+                        rp(Number(disp.monthly_debt_payment) || totalCicilan),
+                        'var(--red)',
+                      ],
+                      [
+                        'Dana Darurat',
+                        rp(Number(disp.emergency_fund) || totalDana),
+                        'var(--blue)',
+                      ],
+                    ].map(([label, val, color]) => (
+                      <div
+                        key={label}
+                        style={{
+                          background: 'var(--white)',
+                          borderRadius: 6,
+                          padding: '8px 10px',
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: 'var(--muted)',
+                            marginBottom: 2,
+                          }}
+                        >
+                          {label}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color,
+                            fontFamily: 'var(--fd)',
+                          }}
+                        >
+                          {val}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -606,7 +886,7 @@ export default function FinancialHealth() {
             </div>
             <button
               className="btn btn-outline btn-full"
-              onClick={() => setTab('form')}
+              onClick={handleHitungUlang}
             >
               Hitung Ulang
             </button>

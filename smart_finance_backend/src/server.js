@@ -10,6 +10,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import insightRoutes from './routes/insightRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import financeRoutes from './routes/financeRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +37,7 @@ app.get('/', (req, res) => {
       consultants: '/api/consultants',
       bookings: '/api/bookings',
       insights: '/api/insights',
+      finance: '/api/finance',
     },
   });
 });
@@ -47,6 +49,7 @@ app.use('/api/consultants', consultantRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/insights', insightRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/finance', financeRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

@@ -22,7 +22,14 @@ export function AppProvider({ children }) {
   const [bookings, setBookings] = useState([]);
   const [consultants, setConsultants] = useState([]);
   const [dashboard, setDashboard] = useState(null);
-  const [busy, setBusy] = useState({ init: false, hc: false, bk: false });
+  const [akumulasi, setAkumulasi] = useState(null);
+  const [healthPrefill, setHealthPrefill] = useState(null);
+  const [busy, setBusy] = useState({
+    init: false,
+    hc: false,
+    bk: false,
+    ak: false,
+  });
   const [zoomLinks, setZoomLinks] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('zoom_links') || '{}');
@@ -101,6 +108,40 @@ export function AppProvider({ children }) {
     } catch {}
   }, []);
 
+  const loadAkumulasi = useCallback(async () => {
+    if (!tok()) return;
+    setBusy((p) => ({ ...p, ak: true }));
+    try {
+      const r = await fetch(`${API}/finance/akumulasi-bulanan`, {
+        headers: hdr(),
+      });
+      const d = await r.json();
+      if (d.status === 'success') {
+        setAkumulasi(d.data);
+      }
+    } catch {
+    } finally {
+      setBusy((p) => ({ ...p, ak: false }));
+    }
+  }, []);
+
+  const addDailyLog = useCallback(
+    async (payload) => {
+      if (!tok()) return;
+      const r = await fetch(`${API}/finance/daily-log`, {
+        method: 'POST',
+        headers: hdr(),
+        body: JSON.stringify(payload),
+      });
+      const d = await r.json();
+      if (d.status === 'success') {
+        await loadAkumulasi();
+      }
+      return d;
+    },
+    [loadAkumulasi],
+  );
+
   const refreshAll = useCallback(async () => {
     await Promise.allSettled([
       loadHealth(),
@@ -108,8 +149,16 @@ export function AppProvider({ children }) {
       loadConsultants(),
       loadDashboard(),
       loadMe(),
+      loadAkumulasi(),
     ]);
-  }, [loadHealth, loadBookings, loadConsultants, loadDashboard, loadMe]);
+  }, [
+    loadHealth,
+    loadBookings,
+    loadConsultants,
+    loadDashboard,
+    loadMe,
+    loadAkumulasi,
+  ]);
 
   useEffect(() => {
     if (tok() && !ready.current) {
@@ -158,6 +207,8 @@ export function AppProvider({ children }) {
     setHealthHistory([]);
     setBookings([]);
     setDashboard(null);
+    setAkumulasi(null);
+    setHealthPrefill(null);
     ready.current = false;
   }, []);
 
@@ -165,21 +216,59 @@ export function AppProvider({ children }) {
     async (form) => {
       setBusy((p) => ({ ...p, hc: true }));
       try {
+        const payload = {
+          monthly_income: Number(
+            form.monthly_income ||
+              form.monthlyIncome ||
+              form.total_pendapatan ||
+              form.pendapatan ||
+              0,
+          ),
+          monthly_expenses: Number(
+            form.monthly_expenses ||
+              form.monthlyExpenses ||
+              form.total_pengeluaran ||
+              form.pengeluaran ||
+              0,
+          ),
+          monthly_debt_payment: Number(
+            form.monthly_debt_payment ||
+              form.monthlyDebtPayment ||
+              form.total_cicilan ||
+              form.cicilan ||
+              0,
+          ),
+          emergency_fund: Number(
+            form.emergency_fund ||
+              form.emergencyFund ||
+              form.total_dana_darurat ||
+              form.dana_darurat ||
+              form.danaDarurat ||
+              0,
+          ),
+          score: Number(form.score || 0),
+          status: form.status || 'Good',
+        };
+
         const r = await fetch(`${API}/health-check`, {
           method: 'POST',
           headers: hdr(),
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
         const d = await r.json();
         if (d.status === 'success') {
-          await Promise.allSettled([loadHealth(), loadDashboard()]);
+          await Promise.allSettled([
+            loadHealth(),
+            loadDashboard(),
+            loadAkumulasi(),
+          ]);
         }
         return d;
       } finally {
         setBusy((p) => ({ ...p, hc: false }));
       }
     },
-    [loadHealth, loadDashboard],
+    [loadHealth, loadDashboard, loadAkumulasi],
   );
 
   const doBooking = useCallback(
@@ -248,6 +337,14 @@ export function AppProvider({ children }) {
     return r.json();
   }, []);
 
+  const prefillHealthFromAkumulasi = useCallback((data) => {
+    setHealthPrefill(data);
+  }, []);
+
+  const clearHealthPrefill = useCallback(() => {
+    setHealthPrefill(null);
+  }, []);
+
   const lastHC = healthHistory[0] || null;
 
   return (
@@ -258,6 +355,8 @@ export function AppProvider({ children }) {
         bookings,
         consultants,
         dashboard,
+        akumulasi,
+        healthPrefill,
         busy,
         lastHC,
         zoomLinks,
@@ -272,6 +371,10 @@ export function AppProvider({ children }) {
         changePass,
         getSlots,
         refreshAll,
+        loadAkumulasi,
+        addDailyLog,
+        prefillHealthFromAkumulasi,
+        clearHealthPrefill,
         API,
       }}
     >

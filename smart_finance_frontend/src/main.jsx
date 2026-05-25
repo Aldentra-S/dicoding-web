@@ -1,9 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider } from './context/AppContext.jsx';
+import { AppProvider, useApp } from './context/AppContext.jsx';
 import Auth from './Register and Login/app.jsx';
 import Dashboard from './dashboard/dashboard.jsx';
+import AkumulasiKeuangan from './akumulasi/AkumulasiKeuangan.jsx';
 import FinancialHealth from './financialHealth/financialHealth.jsx';
 import ConsultationList from './consultation/consultationList.jsx';
 import BookingConsultation from './consultation/bookingConsultation.jsx';
@@ -13,8 +14,24 @@ import AdminPanel from './admin/adminPanel.jsx';
 import './index.css';
 
 const Guard = ({ children }) => {
+  const { user, busy } = useApp();
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/" replace />;
+  if (busy.init)
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#0B0F19] text-white">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+      </div>
+    );
+  if (!token || !user) return <Navigate to="/" replace />;
+  return children;
+};
+
+const AdminGuard = ({ children }) => {
+  const adminToken = localStorage.getItem('admin_token');
+  // Kalau sudah punya admin_token, langsung masuk — AdminPanel handle loginnya sendiri
+  if (adminToken) return children;
+  // Kalau belum punya admin_token, tetap boleh masuk ke AdminPanel (untuk tampil form login admin)
+  return children;
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -23,12 +40,27 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Auth />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminGuard>
+                <AdminPanel />
+              </AdminGuard>
+            }
+          />
           <Route
             path="/dashboard"
             element={
               <Guard>
                 <Dashboard />
+              </Guard>
+            }
+          />
+          <Route
+            path="/akumulasi-keuangan"
+            element={
+              <Guard>
+                <AkumulasiKeuangan />
               </Guard>
             }
           />
