@@ -49,7 +49,6 @@ export default function FinancialHealth() {
 
   const formatDateVal = (d) => {
     if (!d) return '';
-    // Gunakan waktu lokal, bukan UTC, supaya tanggal tidak geser
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
@@ -65,7 +64,6 @@ export default function FinancialHealth() {
     });
   };
 
-  // Bangun date options dari log yang ada, mulai dari hari pertama log sampai hari ini
   const logsUrutTanggal = [...dataLogs].sort(
     (a, b) => new Date(a.created_at) - new Date(b.created_at),
   );
@@ -90,7 +88,6 @@ export default function FinancialHealth() {
 
   const dateOptions = buildDateOptions();
 
-  // Default tanggal: hari pertama log s/d hari ini (bukan dari useEffect yang bisa race)
   const defaultTglAwal =
     dateOptions.length > 0 ? formatDateVal(dateOptions[0]) : '';
   const defaultTglAkhir =
@@ -101,7 +98,6 @@ export default function FinancialHealth() {
   const [tglAwal, setTglAwal] = useState('');
   const [tglAkhir, setTglAkhir] = useState('');
 
-  // Set tanggal default sekali saat dateOptions tersedia
   useEffect(() => {
     if (dateOptions.length > 0 && !tglAwal) {
       setTglAwal(defaultTglAwal);
@@ -143,14 +139,13 @@ export default function FinancialHealth() {
     0,
   );
 
-  const sisaBersih = totalPendapatan - totalPengeluaran - totalCicilan;
+  const saldoSaatIni = totalPendapatan - totalPengeluaran - totalCicilan;
 
   const labelPeriode =
     activeTglAwal && activeTglAkhir
       ? `${formatDateLabel(tglAwalObj)} – ${formatDateLabel(tglAkhirObj)}`
       : `${BULAN_ID[now.getMonth()]} ${now.getFullYear()}`;
 
-  // Form langsung sinkron dengan total dari filter — tidak perlu useEffect terpisah
   const form = {
     monthly_income: totalPendapatan,
     monthly_expenses: totalPengeluaran,
@@ -158,7 +153,6 @@ export default function FinancialHealth() {
     emergency_fund: totalDana,
   };
 
-  // State untuk override manual oleh user
   const [formOverride, setFormOverride] = useState(null);
   const activeForm = formOverride || form;
 
@@ -169,7 +163,6 @@ export default function FinancialHealth() {
     }));
   };
 
-  // Reset override kalau periode berubah
   const handleChangeTglAwal = (val) => {
     setTglAwal(val);
     setFormOverride(null);
@@ -425,6 +418,47 @@ export default function FinancialHealth() {
                     }}
                   >
                     📅 {labelPeriode} · {logsFiltered.length} hari data
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: '10px 12px',
+                      background: 'var(--white)',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                      <span style={{ fontSize: 16 }}>💵</span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: 'var(--ink)',
+                        }}
+                      >
+                        Saldo Saat Ini
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        fontFamily: 'var(--fd)',
+                        color:
+                          saldoSaatIni >= 0 ? 'var(--green-2)' : 'var(--red)',
+                      }}
+                    >
+                      {rp(saldoSaatIni)}
+                    </span>
                   </div>
                 </div>
               )}
@@ -788,6 +822,44 @@ export default function FinancialHealth() {
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '8px 10px',
+                      background: saldoSaatIni >= 0 ? '#dcfce7' : '#fee2e2',
+                      borderRadius: 6,
+                      border: `1px solid ${saldoSaatIni >= 0 ? '#86efac' : '#fca5a5'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <div
+                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      <span style={{ fontSize: 14 }}>💵</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: 'var(--ink)',
+                        }}
+                      >
+                        Saldo Saat Ini
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: 'var(--fd)',
+                        color: saldoSaatIni >= 0 ? '#166534' : '#b91c1c',
+                      }}
+                    >
+                      {rp(saldoSaatIni)}
+                    </span>
                   </div>
                 </div>
               </div>

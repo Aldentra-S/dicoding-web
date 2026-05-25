@@ -152,7 +152,6 @@ export default function AkumulasiKeuangan() {
   const dataAkumulasi = akumulasi?.data?.akumulasi || akumulasi?.akumulasi;
   const dataLogs = akumulasi?.data?.logs || akumulasi?.logs || [];
   const totalChecks = Number(dataAkumulasi?.total_checks || 0);
-  const rataSkor = Math.round(Number(dataAkumulasi?.rata_skor || 0));
 
   const logsUrutTanggal = [...dataLogs].sort(
     (a, b) => new Date(a.created_at) - new Date(b.created_at),
@@ -265,6 +264,8 @@ export default function AkumulasiKeuangan() {
     (s, l) => s + Number(l.emergency_fund || 0),
     0,
   );
+  const saldoSaatIni =
+    totalPendapatanSemua - totalPengeluaranSemua - totalCicilanSemua;
 
   const chartData = (() => {
     const logsWithData = dataLogs.filter(
@@ -599,42 +600,60 @@ export default function AkumulasiKeuangan() {
           </div>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 14,
-          }}
-          className="ak-stat-grid"
-        >
-          <StatCard
-            icon="💰"
-            label="Total Pendapatan"
-            value={rp(totalPendapatanSemua)}
-            color="var(--green-2)"
-            bg="var(--green-bg)"
-          />
-          <StatCard
-            icon="🛒"
-            label="Total Pengeluaran"
-            value={rp(totalPengeluaranSemua)}
-            color="var(--amber)"
-            bg="var(--gold-lt)"
-          />
-          <StatCard
-            icon="🏦"
-            label="Total Cicilan"
-            value={rp(totalCicilanSemua)}
-            color="var(--red)"
-            bg="var(--red-lt)"
-          />
-          <StatCard
-            icon="🛡️"
-            label="Dana Darurat"
-            value={rp(totalDanaSemua)}
-            color="var(--blue)"
-            bg="var(--blue-lt)"
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 14,
+            }}
+            className="ak-stat-grid-top"
+          >
+            <StatCard
+              icon="💰"
+              label="Total Pendapatan"
+              value={rp(totalPendapatanSemua)}
+              color="var(--green-2)"
+              bg="var(--green-bg)"
+            />
+            <StatCard
+              icon="🛒"
+              label="Total Pengeluaran"
+              value={rp(totalPengeluaranSemua)}
+              color="var(--amber)"
+              bg="var(--gold-lt)"
+            />
+            <StatCard
+              icon="🏦"
+              label="Total Cicilan"
+              value={rp(totalCicilanSemua)}
+              color="var(--red)"
+              bg="var(--red-lt)"
+            />
+          </div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 14,
+            }}
+            className="ak-stat-grid-bot"
+          >
+            <StatCard
+              icon="🛡️"
+              label="Dana Darurat"
+              value={rp(totalDanaSemua)}
+              color="var(--blue)"
+              bg="var(--blue-lt)"
+            />
+            <StatCard
+              icon="💵"
+              label="Saldo Saat Ini"
+              value={rp(saldoSaatIni)}
+              color={saldoSaatIni >= 0 ? 'var(--green-2)' : 'var(--red)'}
+              bg={saldoSaatIni >= 0 ? 'var(--green-bg)' : 'var(--red-lt)'}
+            />
+          </div>
         </div>
 
         {isLoading && dataLogs.length === 0 ? (
@@ -775,26 +794,6 @@ export default function AkumulasiKeuangan() {
                           </option>
                         ))}
                     </select>
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-end',
-                      paddingBottom: 2,
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: '8px 14px',
-                        background: 'var(--green-bg)',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        color: 'var(--green-2)',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {logsFiltered.length} hari data
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1082,76 +1081,6 @@ export default function AkumulasiKeuangan() {
                     </button>
                   </div>
                 </div>
-
-                {dataAkumulasi && totalChecks > 0 && (
-                  <div className="card">
-                    <div className="card-hd">
-                      <span className="card-title">Rata-rata Skor</span>
-                    </div>
-                    <div
-                      className="card-body"
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        padding: '20px',
-                      }}
-                    >
-                      <div className="ring">
-                        <svg width="110" height="110" viewBox="0 0 110 110">
-                          <circle
-                            cx="55"
-                            cy="55"
-                            r="44"
-                            fill="none"
-                            stroke="#f0f0f0"
-                            strokeWidth="10"
-                          />
-                          <circle
-                            cx="55"
-                            cy="55"
-                            r="44"
-                            fill="none"
-                            stroke={
-                              rataSkor >= 70 ? 'var(--green-2)' : 'var(--amber)'
-                            }
-                            strokeWidth="10"
-                            strokeDasharray={`${(rataSkor / 100) * 276.46} 276.46`}
-                            strokeLinecap="round"
-                            style={{
-                              transform: 'rotate(-90deg)',
-                              transformOrigin: '55px 55px',
-                            }}
-                          />
-                        </svg>
-                        <div className="ring-txt">
-                          <span
-                            className="ring-num"
-                            style={{
-                              color:
-                                rataSkor >= 70
-                                  ? 'var(--green-2)'
-                                  : 'var(--amber)',
-                            }}
-                          >
-                            {rataSkor}
-                          </span>
-                          <span className="ring-lbl">rata-rata</span>
-                        </div>
-                      </div>
-                      <p
-                        style={{
-                          fontSize: 12,
-                          color: 'var(--muted)',
-                          textAlign: 'center',
-                          marginTop: 8,
-                        }}
-                      >
-                        Skor rata-rata dari {totalChecks} pengecekan bulan ini
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </>
@@ -1160,11 +1089,11 @@ export default function AkumulasiKeuangan() {
 
       <style>{`
         @media (max-width: 1100px) {
-          .ak-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .ak-main-grid { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 600px) {
-          .ak-stat-grid { grid-template-columns: 1fr !important; }
+          .ak-stat-grid-top { grid-template-columns: 1fr !important; }
+          .ak-stat-grid-bot { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </Layout>
