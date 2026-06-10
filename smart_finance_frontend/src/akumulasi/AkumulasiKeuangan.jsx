@@ -810,225 +810,236 @@ export default function AkumulasiKeuangan() {
               className="ak-main-grid"
             >
               <div
-                style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                style={{
+                  overflowX: 'auto',
+                  WebkitOverflowScrolling: 'touch',
+                }}
               >
-                {chartData.length > 0 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                    minWidth: 520,
+                  }}
+                >
+                  {chartData.length > 0 && (
+                    <div className="card">
+                      <div className="card-hd">
+                        <span className="card-title">
+                          Grafik Perkembangan Harian (Tanggal 1 - {jumlahHari})
+                        </span>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                          Input Riil
+                        </span>
+                      </div>
+                      <div className="card-body">
+                        <ResponsiveContainer width="100%" height={240}>
+                          <BarChart
+                            data={chartData}
+                            barGap={1}
+                            barCategoryGap="15%"
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="var(--border)"
+                              vertical={false}
+                            />
+                            <XAxis
+                              dataKey="tanggalAngka"
+                              tick={{ fontSize: 9, fill: 'var(--muted)' }}
+                              tickLine={true}
+                              axisLine={false}
+                              label={{
+                                value: 'Tanggal',
+                                position: 'insideBottom',
+                                offset: -2,
+                                fontSize: 10,
+                                fill: 'var(--muted)',
+                              }}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 10, fill: 'var(--muted)' }}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(v) =>
+                                v >= 1000000
+                                  ? `${(v / 1000000).toFixed(1)}jt`
+                                  : v >= 1000
+                                    ? `${(v / 1000).toFixed(0)}rb`
+                                    : v
+                              }
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Bar
+                              dataKey="Pendapatan"
+                              fill="#2d7a52"
+                              radius={[2, 2, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="Pengeluaran"
+                              fill="#d97706"
+                              radius={[2, 2, 0, 0]}
+                            />
+                            <Bar
+                              dataKey="Cicilan"
+                              fill="#b91c1c"
+                              radius={[2, 2, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 16,
+                            justifyContent: 'center',
+                            marginTop: 12,
+                          }}
+                        >
+                          {[
+                            ['#2d7a52', 'Pendapatan'],
+                            ['#d97706', 'Pengeluaran'],
+                            ['#b91c1c', 'Cicilan'],
+                          ].map(([c, l]) => (
+                            <div
+                              key={l}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 5,
+                                fontSize: 11,
+                                color: 'var(--ink-2)',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: 3,
+                                  background: c,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              {l}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="card">
                     <div className="card-hd">
                       <span className="card-title">
-                        Grafik Perkembangan Harian (Tanggal 1 - {jumlahHari})
+                        Log Transaksi Berdasarkan Tanggal
                       </span>
                       <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                        Input Riil
+                        {totalChecks} entri
                       </span>
                     </div>
-                    <div
-                      className="card-body"
-                      style={{ overflowY: 'auto', maxHeight: 340 }}
-                    >
-                      <ResponsiveContainer width="100%" height={240}>
-                        <BarChart
-                          data={chartData}
-                          barGap={1}
-                          barCategoryGap="15%"
+                    <div className="tbl-wrap">
+                      <table>
+                        <thead
+                          style={{
+                            position: 'sticky',
+                            top: 0,
+                            background: 'var(--white)',
+                            zIndex: 1,
+                          }}
                         >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="var(--border)"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="tanggalAngka"
-                            tick={{ fontSize: 9, fill: 'var(--muted)' }}
-                            tickLine={true}
-                            axisLine={false}
-                            label={{
-                              value: 'Tanggal',
-                              position: 'insideBottom',
-                              offset: -2,
-                              fontSize: 10,
-                              fill: 'var(--muted)',
-                            }}
-                          />
-                          <YAxis
-                            tick={{ fontSize: 10, fill: 'var(--muted)' }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(v) =>
-                              v >= 1000000
-                                ? `${(v / 1000000).toFixed(1)}jt`
-                                : v >= 1000
-                                  ? `${(v / 1000).toFixed(0)}rb`
-                                  : v
-                            }
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Bar
-                            dataKey="Pendapatan"
-                            fill="#2d7a52"
-                            radius={[2, 2, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="Pengeluaran"
-                            fill="#d97706"
-                            radius={[2, 2, 0, 0]}
-                          />
-                          <Bar
-                            dataKey="Cicilan"
-                            fill="#b91c1c"
-                            radius={[2, 2, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: 16,
-                          justifyContent: 'center',
-                          marginTop: 12,
-                        }}
-                      >
-                        {[
-                          ['#2d7a52', 'Pendapatan'],
-                          ['#d97706', 'Pengeluaran'],
-                          ['#b91c1c', 'Cicilan'],
-                        ].map(([c, l]) => (
-                          <div
-                            key={l}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              fontSize: 11,
-                              color: 'var(--ink-2)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: 3,
-                                background: c,
-                                flexShrink: 0,
-                              }}
-                            />
-                            {l}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="card">
-                  <div className="card-hd">
-                    <span className="card-title">
-                      Log Transaksi Berdasarkan Tanggal
-                    </span>
-                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      {totalChecks} entri
-                    </span>
-                  </div>
-                  <div
-                    className="tbl-wrap"
-                    style={{ overflowY: 'auto', maxHeight: 360 }}
-                  >
-                    <table>
-                      <thead
-                        style={{
-                          position: 'sticky',
-                          top: 0,
-                          background: 'var(--white)',
-                          zIndex: 1,
-                        }}
-                      >
-                        <tr>
-                          <th>Tanggal</th>
-                          <th>Pendapatan</th>
-                          <th>Pengeluaran</th>
-                          <th>Cicilan</th>
-                          <th>Dana Darurat</th>
-                          <th>Skor</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {logsUrutTanggal.map((l, index) => (
-                          <tr key={l.id || l.created_at || index}>
-                            <td style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-                              {new Date(l.created_at).toLocaleDateString(
-                                'id-ID',
-                                {
-                                  day: '2-digit',
-                                  month: 'short',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                },
-                              )}
-                            </td>
-                            <td
-                              style={{
-                                color: 'var(--green-2)',
-                                fontWeight: 600,
-                                fontSize: 12,
-                              }}
-                            >
-                              {rp(l.monthly_income)}
-                            </td>
-                            <td
-                              style={{
-                                color: 'var(--amber)',
-                                fontWeight: 600,
-                                fontSize: 12,
-                              }}
-                            >
-                              {rp(l.monthly_expenses)}
-                            </td>
-                            <td
-                              style={{
-                                color: 'var(--red)',
-                                fontWeight: 600,
-                                fontSize: 12,
-                              }}
-                            >
-                              {rp(l.monthly_debt_payment)}
-                            </td>
-                            <td
-                              style={{
-                                color: 'var(--blue)',
-                                fontWeight: 600,
-                                fontSize: 12,
-                              }}
-                            >
-                              {rp(l.emergency_fund)}
-                            </td>
-                            <td>
-                              <span
+                          <tr>
+                            <th>Tanggal</th>
+                            <th>Pendapatan</th>
+                            <th>Pengeluaran</th>
+                            <th>Cicilan</th>
+                            <th>Dana Darurat</th>
+                            <th>Skor</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logsUrutTanggal.map((l, index) => (
+                            <tr key={l.id || l.created_at || index}>
+                              <td
+                                style={{ fontSize: 12, whiteSpace: 'nowrap' }}
+                              >
+                                {new Date(l.created_at).toLocaleDateString(
+                                  'id-ID',
+                                  {
+                                    day: '2-digit',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  },
+                                )}
+                              </td>
+                              <td
                                 style={{
-                                  fontFamily: 'var(--fd)',
-                                  fontSize: 14,
-                                  fontWeight: 700,
+                                  color: 'var(--green-2)',
+                                  fontWeight: 600,
+                                  fontSize: 12,
                                 }}
                               >
-                                {Math.round(l.score || 0)}
-                              </span>
-                              <span
-                                style={{ color: 'var(--muted)', fontSize: 10 }}
+                                {rp(l.monthly_income)}
+                              </td>
+                              <td
+                                style={{
+                                  color: 'var(--amber)',
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                }}
                               >
-                                /100
-                              </span>
-                            </td>
-                            <td>
-                              <span
-                                className={`badge ${l.status === 'Sehat' ? 'b-green' : l.status === 'Rawan' ? 'b-amber' : 'b-red'}`}
+                                {rp(l.monthly_expenses)}
+                              </td>
+                              <td
+                                style={{
+                                  color: 'var(--red)',
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                }}
                               >
-                                {l.status || 'Tidak Diketahui'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                {rp(l.monthly_debt_payment)}
+                              </td>
+                              <td
+                                style={{
+                                  color: 'var(--blue)',
+                                  fontWeight: 600,
+                                  fontSize: 12,
+                                }}
+                              >
+                                {rp(l.emergency_fund)}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    fontFamily: 'var(--fd)',
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {Math.round(l.score || 0)}
+                                </span>
+                                <span
+                                  style={{
+                                    color: 'var(--muted)',
+                                    fontSize: 10,
+                                  }}
+                                >
+                                  /100
+                                </span>
+                              </td>
+                              <td>
+                                <span
+                                  className={`badge ${l.status === 'Sehat' ? 'b-green' : l.status === 'Rawan' ? 'b-amber' : 'b-red'}`}
+                                >
+                                  {l.status || 'Tidak Diketahui'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
