@@ -321,7 +321,7 @@ textarea {
   gap: 12px;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 301;
   flex-shrink: 0;
 }
 

@@ -122,8 +122,7 @@ export default function AkumulasiKeuangan() {
     setFormInput((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmitHarian = async (e) => {
-    e.preventDefault();
+  const handleSubmitHarian = async () => {
     setSubmitting(true);
     setSubmitMsg('');
     try {
@@ -462,8 +461,7 @@ export default function AkumulasiKeuangan() {
                 {submitMsg}
               </div>
             )}
-            <form
-              onSubmit={handleSubmitHarian}
+            <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -495,8 +493,8 @@ export default function AkumulasiKeuangan() {
                     border: '1px solid var(--border)',
                     background: 'var(--white)',
                     color: 'var(--ink)',
+                    boxSizing: 'border-box',
                   }}
-                  required
                 />
               </div>
               <div>
@@ -524,8 +522,8 @@ export default function AkumulasiKeuangan() {
                     border: '1px solid var(--border)',
                     background: 'var(--white)',
                     color: 'var(--ink)',
+                    boxSizing: 'border-box',
                   }}
-                  required
                 />
               </div>
               <div>
@@ -553,8 +551,8 @@ export default function AkumulasiKeuangan() {
                     border: '1px solid var(--border)',
                     background: 'var(--white)',
                     color: 'var(--ink)',
+                    boxSizing: 'border-box',
                   }}
-                  required
                 />
               </div>
               <div>
@@ -582,21 +580,22 @@ export default function AkumulasiKeuangan() {
                     border: '1px solid var(--border)',
                     background: 'var(--white)',
                     color: 'var(--ink)',
+                    boxSizing: 'border-box',
                   }}
-                  required
                 />
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                 <button
-                  type="submit"
+                  type="button"
                   className="btn btn-dark"
                   style={{ width: '100%', height: '42px' }}
                   disabled={submitting}
+                  onClick={handleSubmitHarian}
                 >
                   {submitting ? 'Menyimpan...' : 'Simpan Data Harian'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
 
@@ -743,6 +742,7 @@ export default function AkumulasiKeuangan() {
                         background: 'var(--white)',
                         color: 'var(--ink)',
                         fontSize: 13,
+                        boxSizing: 'border-box',
                       }}
                     >
                       {dateOptions.map((d) => (
@@ -775,6 +775,7 @@ export default function AkumulasiKeuangan() {
                         background: 'var(--white)',
                         color: 'var(--ink)',
                         fontSize: 13,
+                        boxSizing: 'border-box',
                       }}
                     >
                       {dateOptions
@@ -1063,6 +1064,7 @@ export default function AkumulasiKeuangan() {
                       </div>
                     </div>
                     <button
+                      type="button"
                       className="btn btn-dark btn-full"
                       onClick={handleCekKesehatan}
                       style={{ gap: 8 }}
