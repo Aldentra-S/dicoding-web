@@ -72,6 +72,7 @@ textarea {
   background: var(--ink);
   position: fixed;
   inset: 0 auto 0 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   z-index: 300;
@@ -171,6 +172,7 @@ textarea {
 
 .sb-nav {
   flex: 1;
+  min-height: 0;
   padding: 10px 10px;
   display: flex;
   flex-direction: column;
@@ -249,6 +251,7 @@ textarea {
   padding: 10px 10px 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   flex-shrink: 0;
+  background: var(--ink);
 }
 
 .sb-user-inner {
@@ -1052,6 +1055,7 @@ tbody td {
   }
   .sidebar {
     width: 240px;
+    height: 100vh;
     transform: translateX(-100%);
     box-shadow: none;
   }
