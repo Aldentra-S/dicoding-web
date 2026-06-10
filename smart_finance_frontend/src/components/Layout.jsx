@@ -147,7 +147,7 @@ export default function Layout({ title, subtitle, children }) {
         : '#ef4444';
 
   return (
-    <div className="layout">
+    <div className={`layout ${open ? 'sidebar-open' : ''}`}>
       <div
         className={`overlay ${open ? 'show' : ''}`}
         onClick={() => setOpen(false)}

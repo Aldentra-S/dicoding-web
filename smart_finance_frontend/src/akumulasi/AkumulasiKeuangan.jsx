@@ -822,7 +822,10 @@ export default function AkumulasiKeuangan() {
                         Input Riil
                       </span>
                     </div>
-                    <div className="card-body">
+                    <div
+                      className="card-body"
+                      style={{ overflowY: 'auto', maxHeight: 340 }}
+                    >
                       <ResponsiveContainer width="100%" height={240}>
                         <BarChart
                           data={chartData}
@@ -926,9 +929,19 @@ export default function AkumulasiKeuangan() {
                       {totalChecks} entri
                     </span>
                   </div>
-                  <div className="tbl-wrap">
+                  <div
+                    className="tbl-wrap"
+                    style={{ overflowY: 'auto', maxHeight: 360 }}
+                  >
                     <table>
-                      <thead>
+                      <thead
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          background: 'var(--white)',
+                          zIndex: 1,
+                        }}
+                      >
                         <tr>
                           <th>Tanggal</th>
                           <th>Pendapatan</th>

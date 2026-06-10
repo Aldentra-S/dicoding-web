@@ -296,10 +296,16 @@ textarea {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 400;
+  z-index: 499;
+  touch-action: none;
 }
 .overlay.show {
   display: block;
+}
+
+.layout.sidebar-open .main {
+  pointer-events: none;
+  user-select: none;
 }
 
 .main {
