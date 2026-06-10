@@ -1172,6 +1172,15 @@ tbody td {
   .edu-article-layout {
     grid-template-columns: 1fr !important;
   }
+  .chat-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .chat-panel-order-1 {
+    order: 1;
+  }
+  .chat-panel-order-2 {
+    order: 2;
+  }
 }
 
 @media (max-width: 480px) {

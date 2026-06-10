@@ -662,6 +662,7 @@ export default function ConsultationList() {
 
       {tab === 'chat' && (
         <div
+          className="chat-layout"
           style={{
             display: 'grid',
             gridTemplateColumns: '260px 1fr',
@@ -670,7 +671,7 @@ export default function ConsultationList() {
             minHeight: 500,
           }}
         >
-          <div className="card" style={{ padding: 0 }}>
+          <div className="card chat-panel-order-1" style={{ padding: 0 }}>
             <div
               style={{
                 padding: '12px 14px',
@@ -786,7 +787,7 @@ export default function ConsultationList() {
           </div>
 
           {activeChat ? (
-            <div className="card" style={{ padding: 0 }}>
+            <div className="card chat-panel-order-2" style={{ padding: 0 }}>
               <div className="card-hd" style={{ padding: '12px 16px' }}>
                 <div
                   style={{
@@ -1037,7 +1038,7 @@ export default function ConsultationList() {
             </div>
           ) : (
             <div
-              className="card"
+              className="card chat-panel-order-2"
               style={{
                 display: 'flex',
                 alignItems: 'center',
