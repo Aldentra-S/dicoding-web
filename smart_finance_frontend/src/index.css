@@ -75,7 +75,7 @@ textarea {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  z-index: 300;
+  z-index: 500;
   overflow: hidden;
   transition: transform var(--tr);
   will-change: transform;
@@ -296,7 +296,7 @@ textarea {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  z-index: 299;
+  z-index: 400;
 }
 .overlay.show {
   display: block;
@@ -321,7 +321,7 @@ textarea {
   gap: 12px;
   position: sticky;
   top: 0;
-  z-index: 301;
+  z-index: 100;
   flex-shrink: 0;
 }
 
